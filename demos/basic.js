@@ -1,9 +1,5 @@
-# Introduction
-Experimental, bun-based HTTP framework inspired by 0http!
-
-## Usage
-```js
-const http = require('0http-bun')
+/* global Response */
+const http = require('../index')
 
 const { router } = http({})
 router.use((req, next) => {
@@ -29,8 +25,3 @@ module.exports = {
   port: 3000,
   fetch: (request) => router.lookup(request)
 }
-```
-
-# Support / Donate 💚
-You can support the maintenance of this project: 
-- PayPal: https://www.paypal.me/kyberneees

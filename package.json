@@ -1,0 +1,32 @@
+{
+  "name": "0http-bun",
+  "version": "0.0.1",
+  "description": "0http alternative for Bun",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "lru-cache": "^7.10.1",
+    "regexparam": "^2.0.0",
+    "trouter": "^3.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BackendStack21/0http-bun.git"
+  },
+  "keywords": [
+    "http",
+    "server",
+    "rest",
+    "api",
+    "web",
+    "bun"
+  ],
+  "author": "Rolando Santamaria Maso <kyberneees@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BackendStack21/0http-bun/issues"
+  },
+  "homepage": "https://github.com/BackendStack21/0http-bun#readme"
+}
