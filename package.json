@@ -1,6 +1,6 @@
 {
   "name": "0http-bun",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "0http alternative for Bun",
   "main": "index.js",
   "scripts": {
