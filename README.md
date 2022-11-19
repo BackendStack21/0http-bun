@@ -1,5 +1,5 @@
 # Introduction
-Experimental, bun-based HTTP framework inspired by 0http!
+Experimental, bun-based HTTP framework inspired by [0http](https://0http.21no.de/#/)
 
 ## Usage
 ```js
@@ -31,7 +31,7 @@ module.exports = {
 }
 ```
 # Benchmarks
-## 0http-bun
+## 0http-bun (bun v0.2.2)
 ```
 % wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
 Running 10s test @ http://127.0.0.1:3000/hi
@@ -48,7 +48,7 @@ Running 10s test @ http://127.0.0.1:3000/hi
 Requests/sec: 103397.66
 Transfer/sec:     12.62MB
 ```
-## 0http-node
+## 0http (node v18.2.0)
 ```
 % wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
 Running 10s test @ http://127.0.0.1:3000/hi
@@ -64,6 +64,23 @@ Running 10s test @ http://127.0.0.1:3000/hi
   493899 requests in 10.10s, 63.59MB read
 Requests/sec:  48893.32
 Transfer/sec:      6.29MB
+```
+## express (node v18.2.0)
+```
+% wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
+Running 10s test @ http://127.0.0.1:3000/hi
+  4 threads and 50 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     4.99ms    0.90ms  20.31ms   89.52%
+    Req/Sec     2.42k   154.52     2.66k    82.25%
+  Latency Distribution
+     50%    4.67ms
+     75%    4.83ms
+     90%    6.03ms
+     99%    8.43ms
+  96296 requests in 10.01s, 21.95MB read
+Requests/sec:   9622.74
+Transfer/sec:      2.19MB
 ```
 # Support / Donate 💚
 You can support the maintenance of this project: 
