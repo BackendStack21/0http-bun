@@ -4,12 +4,11 @@
   "description": "0http alternative for Bun",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "bun x rome ci . --semicolons=as-needed",
+    "format": "bun x rome format . --semicolons=as-needed --write"
   },
   "dependencies": {
-    "lru-cache": "^7.10.1",
-    "regexparam": "^2.0.0",
-    "trouter": "^3.2.0"
+    "trouter": "^3.2.1"
   },
   "repository": {
     "type": "git",

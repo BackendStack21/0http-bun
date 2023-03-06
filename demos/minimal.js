@@ -7,7 +7,4 @@ router.get('/hi', async (req) => {
   return new Response('Hello World!')
 })
 
-module.exports = {
-  port: 3000,
-  fetch: (request) => router.lookup(request)
-}
+module.exports = router

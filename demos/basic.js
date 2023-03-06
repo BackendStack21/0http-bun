@@ -21,7 +21,4 @@ router.delete('/:id', async (req) => {
   })
 })
 
-module.exports = {
-  port: 3000,
-  fetch: (request) => router.lookup(request)
-}
+module.exports = router
