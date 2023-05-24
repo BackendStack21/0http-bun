@@ -7,4 +7,4 @@ router.get('/hi', async (req) => {
   return new Response('Hello World!')
 })
 
-module.exports = router
+export default router
