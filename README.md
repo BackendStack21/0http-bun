@@ -8,7 +8,9 @@ Experimental, bun-based HTTP framework inspired by [0http](https://0http.21no.de
 ```js
 const http = require('0http-bun')
 
-const { router } = http({})
+const { router } = http({
+  port: 3000
+})
 router.use((req, next) => {
   req.ctx = {
     engine: 'bun'
@@ -28,10 +30,7 @@ router.delete('/:id', async (req) => {
   })
 })
 
-module.exports = {
-  port: 3000,
-  fetch: (request) => router.lookup(request)
-}
+export default router
 ```
 # Benchmarks
 ## 0http-bun (bun v0.2.2)
