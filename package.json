@@ -1,11 +1,11 @@
 {
   "name": "0http-bun",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "0http alternative for Bun",
   "main": "index.js",
   "scripts": {
-    "lint": "bun x rome ci . --semicolons=as-needed",
-    "format": "bun x rome format . --semicolons=as-needed --write"
+    "lint": "bun x standard",
+    "format": "bun x standard --fix"
   },
   "dependencies": {
     "trouter": "^3.2.1"
