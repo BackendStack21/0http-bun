@@ -1,7 +1,7 @@
 {
   "name": "0http-bun",
-  "version": "0.0.3",
-  "description": "0http alternative for Bun",
+  "version": "1.0.0",
+  "description": "0http for Bun",
   "main": "index.js",
   "scripts": {
     "lint": "bun x standard",
