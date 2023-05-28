@@ -1,5 +1,6 @@
 module.exports = (config = {}) => {
-  const router = config.router || require('./lib/router/sequential')(config)
+  // Sequential is default and only router implementation for now
+  const router = require('./lib/router/sequential')(config)
 
   return {
     router
