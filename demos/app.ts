@@ -2,13 +2,13 @@ import http from '../index'
 
 const { router } = http()
 
-router.get('/', (req, res) => {
+router.get('/', () => {
   return new Response()
 })
-router.get('/:id', async (req) => {
+router.get('/:id', (req) => {
   return new Response(req.params.id)
 })
-router.post('/', async (req) => {
+router.post('/', () => {
   return new Response()
 })
 
