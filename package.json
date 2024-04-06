@@ -14,6 +14,12 @@
     "type": "git",
     "url": "git+https://github.com/BackendStack21/0http-bun.git"
   },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "index.js",
+    "lib/"
+  ],
   "devDependencies": {
     "0http-bun": "^1.0.0",
     "mitata": "^0.1.11"
