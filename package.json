@@ -8,6 +8,7 @@
     "format": "bun x standard --fix"
   },
   "dependencies": {
+    "fast-querystring": "^1.1.2",
     "trouter": "^3.2.1"
   },
   "repository": {
@@ -21,7 +22,7 @@
     "lib/"
   ],
   "devDependencies": {
-    "0http-bun": "^1.0.0",
+    "0http-bun": "^1.0.2",
     "mitata": "^0.1.11"
   },
   "keywords": [

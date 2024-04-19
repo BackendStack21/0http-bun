@@ -17,6 +17,10 @@ describe('Router', () => {
       return Response.json(req.params)
     })
 
+    router.get('/qs', (req) => {
+      return Response.json(req.query)
+    })
+
     router.delete('/get-params/:id', () => {
       return Response.json('OK')
     })
@@ -82,5 +86,13 @@ describe('Router', () => {
     }))
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ engine: 'bun' })
+  })
+
+  it('should return a JSON response with the query string parameters', async () => {
+    const response = await router.fetch(new Request('http://localhost:3000/qs?foo=bar', {
+      method: 'GET'
+    }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ foo: 'bar' })
   })
 })
