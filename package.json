@@ -22,7 +22,7 @@
     "lib/"
   ],
   "devDependencies": {
-    "0http-bun": "^1.0.2",
+    "0http-bun": "^1.0.3",
     "mitata": "^0.1.11"
   },
   "keywords": [
