@@ -1,6 +1,6 @@
 {
   "name": "0http-bun",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "0http for Bun",
   "main": "index.js",
   "scripts": {
@@ -19,6 +19,8 @@
     "LICENSE",
     "README.md",
     "index.js",
+    "index.d.ts",
+    "common.d.ts",
     "lib/"
   ],
   "devDependencies": {
