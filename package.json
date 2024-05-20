@@ -23,6 +23,7 @@
   ],
   "devDependencies": {
     "0http-bun": "^1.0.3",
+    "bun-types": "^1.1.8",
     "mitata": "^0.1.11"
   },
   "keywords": [
