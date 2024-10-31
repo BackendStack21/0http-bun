@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "fast-querystring": "^1.1.2",
-    "trouter": "^3.2.1"
+    "regexparam": "^3.0.0",
+    "trouter": "^4"
   },
   "repository": {
     "type": "git",
@@ -24,8 +25,10 @@
     "lib/"
   ],
   "devDependencies": {
-    "0http-bun": "^1.0.3",
-    "bun-types": "^1.1.8",
+    "0http-bun": "^1.0.4",
+    "@types/bun": "^1.1.12",
+    "@types/node": "^22.8.4",
+    "bun-types": "^1.1.33",
     "mitata": "^0.1.11"
   },
   "keywords": [
@@ -41,5 +44,8 @@
   "bugs": {
     "url": "https://github.com/BackendStack21/0http-bun/issues"
   },
-  "homepage": "https://github.com/BackendStack21/0http-bun#readme"
+  "homepage": "https://github.com/BackendStack21/0http-bun#readme",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
 }

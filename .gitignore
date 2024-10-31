@@ -103,4 +103,7 @@ dist
 # TernJS port file
 .tern-port
 
-bun.*
+bun.lockb
+package-lock.json
+# no-lockfile in lib package
+# this is package for Bun.js. use bun.lockb please
