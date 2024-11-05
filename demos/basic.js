@@ -1,24 +1,24 @@
 /* global Response */
-const http = require('../index')
+const http = require('../index');
 
-const { router } = http({})
+const { router } = http({});
 router.use((req, next) => {
   req.ctx = {
-    engine: 'bun'
-  }
+    engine: 'bun',
+  };
 
-  return next()
-})
+  return next();
+});
 router.get('/:id', async (req) => {
-  return Response.json(req.params)
-})
+  return Response.json(req.params);
+});
 router.post('/', async (req) => {
-  return new Response('POST')
-})
+  return new Response('POST');
+});
 router.delete('/:id', async (req) => {
   return Response.json(req.params, {
-    status: 200
-  })
-})
+    status: 200,
+  });
+});
 
-export default router
+export default router;

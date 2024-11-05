@@ -4,8 +4,8 @@
   "description": "0http for Bun",
   "main": "index.js",
   "scripts": {
-    "lint": "bun x standard",
-    "format": "bun x standard --fix"
+    "lint": "bun eslint --fix",
+    "format": "bun prettier . --write"
   },
   "dependencies": {
     "fast-querystring": "^1.1.2",
@@ -28,8 +28,14 @@
     "0http-bun": "^1.0.4",
     "@types/bun": "^1.1.12",
     "@types/node": "^22.8.4",
+    "@typescript-eslint/eslint-plugin": "^8.13.0",
+    "@typescript-eslint/parser": "^8.13.0",
     "bun-types": "^1.1.33",
-    "mitata": "^0.1.11"
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "mitata": "^0.1.11",
+    "prettier": "^3.3.3"
   },
   "keywords": [
     "http",
@@ -46,6 +52,10 @@
   },
   "homepage": "https://github.com/BackendStack21/0http-bun#readme",
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.6.3"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all"
   }
 }

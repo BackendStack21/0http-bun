@@ -1,39 +1,45 @@
 # Introduction
+
 Experimental, bun-based HTTP framework inspired by [0http](https://0http.21no.de/#/)
 
 ![Performance Benchmarks](0http-benchmarks.png)
-> MacBook Pro (13-inch, 2020) 
+
+> MacBook Pro (13-inch, 2020)
 
 ## Usage
+
 ```js
-const http = require('0http-bun')
+const http = require('0http-bun');
 
 const { router } = http({
-  port: 3000
-})
+  port: 3000,
+});
 router.use((req, next) => {
   req.ctx = {
-    engine: 'bun'
-  }
+    engine: 'bun',
+  };
 
-  return next()
-})
+  return next();
+});
 router.get('/:id', async (req) => {
-  return Response.json(req.params)
-})
+  return Response.json(req.params);
+});
 router.post('/', async (req) => {
-  return new Response('POST')
-})
+  return new Response('POST');
+});
 router.delete('/:id', async (req) => {
   return Response.json(req.params, {
-    status: 200
-  })
-})
+    status: 200,
+  });
+});
 
-export default router
+export default router;
 ```
+
 # Benchmarks
+
 ## 0http-bun (bun v0.2.2)
+
 ```
 % wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
 Running 10s test @ http://127.0.0.1:3000/hi
@@ -50,7 +56,9 @@ Running 10s test @ http://127.0.0.1:3000/hi
 Requests/sec: 103397.66
 Transfer/sec:     12.62MB
 ```
+
 ## 0http (node v18.2.0)
+
 ```
 % wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
 Running 10s test @ http://127.0.0.1:3000/hi
@@ -67,7 +75,9 @@ Running 10s test @ http://127.0.0.1:3000/hi
 Requests/sec:  48893.32
 Transfer/sec:      6.29MB
 ```
+
 ## express (node v18.2.0)
+
 ```
 % wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
 Running 10s test @ http://127.0.0.1:3000/hi
@@ -84,6 +94,9 @@ Running 10s test @ http://127.0.0.1:3000/hi
 Requests/sec:   9622.74
 Transfer/sec:      2.19MB
 ```
+
 # Support / Donate 💚
-You can support the maintenance of this project: 
+
+You can support the maintenance of this project:
+
 - PayPal: https://www.paypal.me/kyberneees

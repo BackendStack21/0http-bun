@@ -4,10 +4,10 @@ about: Suggest an idea for this project
 title: ''
 labels: ''
 assignees: ''
-
 ---
 
 **Have you contributed with at least a little donation to support the development of this project?**
+
 - Paypal: https://www.paypal.me/kyberneees
 
 **Is your feature request related to a problem? Please describe.**  

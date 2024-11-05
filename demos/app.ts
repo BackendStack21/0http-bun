@@ -1,19 +1,19 @@
-import http from '../index'
+import http from '../index';
 
-const { router } = http()
+const { router } = http();
 
 router.get('/', () => {
-  return new Response()
-})
+  return new Response();
+});
 router.get('/:id', (req) => {
-  return new Response(req.params.id)
-})
+  return new Response(req.params.id);
+});
 router.post('/', () => {
-  return new Response()
-})
+  return new Response();
+});
 
 Bun.serve({
   port: 3000,
   reusePort: true,
-  fetch: router.fetch
-})
+  fetch: router.fetch,
+});

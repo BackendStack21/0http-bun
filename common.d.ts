@@ -1,5 +1,3 @@
-import { Pattern, Methods, Trouter } from "trouter";
-
 export interface IRouterConfig {
   defaultRoute?: (req: ZeroRequest) => Response;
   errorHandler?: (err: Error | unknown) => Response | Promise<Response>;
@@ -12,12 +10,12 @@ export type ZeroRequest = Request & {
   params: Record<string, string>;
   query: Record<string, string>;
   path: string;
-  ctx?: Record<string, any>;
+  ctx?: Record<string, unknown>;
 };
 
 export type RequestHandler = (
   req: ZeroRequest,
-  next: StepFunction
+  next: StepFunction,
 ) => Response | Promise<Response>;
 
 // export interface IRouter {

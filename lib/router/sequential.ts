@@ -1,8 +1,8 @@
-import type { IRouterConfig, RequestHandler, ZeroRequest } from "../../common";
-import next from "../next";
-import { Trouter, type Methods, type Pattern } from "trouter";
-import qs from "fast-querystring";
-import { parse } from "regexparam";
+import type { IRouterConfig, RequestHandler, ZeroRequest } from '../../common';
+import next from '../next';
+import { Trouter, type Methods, type Pattern } from 'trouter';
+import qs from 'fast-querystring';
+import { parse } from 'regexparam';
 
 const STATUS_404 = {
   status: 404,
@@ -10,6 +10,7 @@ const STATUS_404 = {
 const STATUS_500 = {
   status: 500,
 };
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface IRouter {
   all(pattern: Pattern, ...handlers: RequestHandler[]): this;
   add(method: Methods, pattern: Pattern, ...handlers: RequestHandler[]): this;
@@ -24,7 +25,7 @@ export interface IRouter {
   put(pattern: Pattern, ...handlers: RequestHandler[]): this;
 }
 const MAP = {
-  "": 0,
+  '': 0,
   GET: 1,
   HEAD: 2,
   PATCH: 3,
@@ -36,17 +37,17 @@ const MAP = {
   PUT: 9,
 };
 export type MAP_key =
-  | ""
-  | "GET"
-  | "HEAD"
-  | "PATCH"
-  | "OPTIONS"
-  | "CONNECT"
-  | "DELETE"
-  | "TRACE"
-  | "POST"
-  | "PUT";
-declare module "trouter" {
+  | ''
+  | 'GET'
+  | 'HEAD'
+  | 'PATCH'
+  | 'OPTIONS'
+  | 'CONNECT'
+  | 'DELETE'
+  | 'TRACE'
+  | 'POST'
+  | 'PUT';
+declare module 'trouter' {
   interface Trouter {
     routes: {
       keys: string[];
@@ -59,6 +60,7 @@ declare module "trouter" {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class IRouter extends Trouter {
   port?: number;
   defaultRoute: (_req: ZeroRequest) => Response;
@@ -67,37 +69,37 @@ export class IRouter extends Trouter {
   constructor(config?: IRouterConfig) {
     super();
     this.defaultRoute =
-      config?.defaultRoute || ((_req) => new Response(null, STATUS_404));
+      config?.defaultRoute || (() => new Response(null, STATUS_404));
     this.errorHandler =
       config?.errorHandler ||
       ((err) => {
         return new Response((err as Error).message, STATUS_500);
       });
     this.port = config?.port;
-    this.all = this.add.bind(this, "" as Methods);
-    this.get = this.add.bind(this, "GET");
-    this.head = this.add.bind(this, "HEAD");
-    this.patch = this.add.bind(this, "PATCH");
-    this.options = this.add.bind(this, "OPTIONS");
-    this.connect = this.add.bind(this, "CONNECT");
-    this.delete = this.add.bind(this, "DELETE");
-    this.trace = this.add.bind(this, "TRACE");
-    this.post = this.add.bind(this, "POST");
-    this.put = this.add.bind(this, "PUT");
+    this.all = this.add.bind(this, '' as Methods);
+    this.get = this.add.bind(this, 'GET');
+    this.head = this.add.bind(this, 'HEAD');
+    this.patch = this.add.bind(this, 'PATCH');
+    this.options = this.add.bind(this, 'OPTIONS');
+    this.connect = this.add.bind(this, 'CONNECT');
+    this.delete = this.add.bind(this, 'DELETE');
+    this.trace = this.add.bind(this, 'TRACE');
+    this.post = this.add.bind(this, 'POST');
+    this.put = this.add.bind(this, 'PUT');
   }
   on = (method: Methods, pattern: Pattern, ...handlers: RequestHandler[]) =>
     this.add(method, pattern, ...handlers);
 
   fetch = (req: Request) => {
     const url = req.url;
-    const startIndex = url.indexOf("/", 11);
-    const queryIndex = url.indexOf("?", startIndex + 1);
+    const startIndex = url.indexOf('/', 11);
+    const queryIndex = url.indexOf('?', startIndex + 1);
     const path =
       queryIndex === -1
         ? url.substring(startIndex)
         : url.substring(startIndex, queryIndex);
 
-    (req as ZeroRequest).path = path || "/";
+    (req as ZeroRequest).path = path || '/';
     (req as ZeroRequest).query =
       queryIndex > 0 ? qs.parse(url.substring(queryIndex + 1)) : {};
 
@@ -113,7 +115,7 @@ export class IRouter extends Trouter {
         req as ZeroRequest,
         0,
         this.defaultRoute,
-        this.errorHandler
+        this.errorHandler,
       );
     } else {
       return this.defaultRoute(req as ZeroRequest);
@@ -121,8 +123,8 @@ export class IRouter extends Trouter {
   };
 
   add = (method: Methods, route: Pattern, ...fns: RequestHandler[]) => {
-    let { keys, pattern } = parse(route as string);
-    let handlers = [...fns];
+    const { keys, pattern } = parse(route as string);
+    const handlers = [...fns];
     this.routes.push({
       keys,
       pattern,
@@ -141,25 +143,25 @@ export class IRouter extends Trouter {
     prefix: IRouter | Pattern | RequestHandler,
     ...middlewares: RequestHandler[] | [IRouter]
   ) {
-    if (typeof prefix === "function") {
+    if (typeof prefix === 'function') {
       middlewares = [
         prefix as RequestHandler,
         ...(middlewares as RequestHandler[]),
       ];
-      prefix = "/";
+      prefix = '/';
     } else if (prefix instanceof IRouter) {
       // console.log("prefix.routes >>>", prefix.routes);
       this.routes.push(...prefix.routes);
       return;
     } else if (
-      (typeof prefix === "string" || prefix instanceof RegExp) &&
+      (typeof prefix === 'string' || prefix instanceof RegExp) &&
       middlewares[0] instanceof IRouter
     ) {
       const sub_router = middlewares[0];
       sub_router.routes.forEach((route) => {
         // console.log("route >>>", route);
         const { keys, pattern } = parse(
-          ((prefix as string) + route.origin_pattern) as string
+          ((prefix as string) + route.origin_pattern) as string,
         );
         this.routes.push({
           ...route,
@@ -172,15 +174,15 @@ export class IRouter extends Trouter {
     }
 
     // super.use(prefix as Pattern, ...(middlewares as Function[]));
-    let handlers = [...(middlewares as RequestHandler[])];
-    let { keys, pattern } = parse(prefix as string, true);
+    const handlers = [...(middlewares as RequestHandler[])];
+    const { keys, pattern } = parse(prefix as string, true);
     this.routes.push({
       keys,
       pattern,
-      method: "" as Methods,
+      method: '' as Methods,
       handlers,
       origin_pattern: prefix,
-      midx: MAP[""],
+      midx: MAP[''],
     });
     return this;
   }

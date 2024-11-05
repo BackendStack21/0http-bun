@@ -22,7 +22,7 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
+    "noPropertyAccessFromIndexSignature": false
   },
   "include": [
     "**/*.tsx",
@@ -31,5 +31,10 @@
   ],
   "files": [
     "index.ts",
+    "eslint.config.mjs"
+  ],
+  "exclude": [
+    "node_modules",
+    "demos/*"
   ]
 }

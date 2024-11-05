@@ -1,4 +1,4 @@
-import type { RequestHandler, ZeroRequest } from "../common";
+import type { RequestHandler, ZeroRequest } from '../common';
 const next = (
   middlewares: RequestHandler[],
   req: ZeroRequest,
@@ -6,15 +6,15 @@ const next = (
   defaultRoute: (req: ZeroRequest) => Response,
   errorHandler: (
     err: Error | unknown,
-    req: Request
-  ) => Response | Promise<Response>
+    req: Request,
+  ) => Response | Promise<Response>,
 ) => {
   if (index >= middlewares.length) {
     return defaultRoute(req);
   }
   const middleware = middlewares[index++];
   try {
-    return middleware(req, (err?: unknown): any => {
+    return middleware(req, (err?: unknown): Response | Promise<Response> => {
       if (err) {
         return errorHandler(err, req);
       }
