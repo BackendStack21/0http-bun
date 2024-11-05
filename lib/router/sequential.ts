@@ -10,8 +10,7 @@ const STATUS_404 = {
 const STATUS_500 = {
   status: 500,
 };
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface IRouter {
+export interface _IRouter {
   all(pattern: Pattern, ...handlers: RequestHandler[]): this;
   add(method: Methods, pattern: Pattern, ...handlers: RequestHandler[]): this;
   get(pattern: Pattern, ...handlers: RequestHandler[]): this;
@@ -60,8 +59,7 @@ declare module 'trouter' {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class IRouter extends Trouter {
+export class IRouter extends Trouter implements _IRouter {
   port?: number;
   defaultRoute: (_req: ZeroRequest) => Response;
   errorHandler: (err: Error | unknown) => Response | Promise<Response>;
