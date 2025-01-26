@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "lint": "bun x standard",
-    "format": "bun x standard --fix"
+    "format": "bun x standard --fix",
+    "test": "bun test"
   },
   "dependencies": {
     "fast-querystring": "^1.1.2",
@@ -26,7 +27,7 @@
   "devDependencies": {
     "0http-bun": "^1.0.3",
     "bun-types": "^1.1.8",
-    "mitata": "^0.1.11"
+    "mitata": "^1.0.32"
   },
   "keywords": [
     "http",
