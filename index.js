@@ -3,6 +3,6 @@ module.exports = (config = {}) => {
   const router = require('./lib/router/sequential')(config)
 
   return {
-    router
+    router,
   }
 }

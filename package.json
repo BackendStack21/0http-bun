@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "lint": "bun x standard",
-    "format": "bun x standard --fix",
-    "test": "bun test"
+    "test": "bun test",
+    "bench": "bun run bench.js",
+    "format": "prettier --write *.js"
   },
   "dependencies": {
     "fast-querystring": "^1.1.2",
-    "trouter": "^3.2.1"
+    "trouter": "^4.0.0"
   },
   "repository": {
     "type": "git",
@@ -25,9 +26,10 @@
     "lib/"
   ],
   "devDependencies": {
-    "0http-bun": "^1.0.3",
-    "bun-types": "^1.1.8",
-    "mitata": "^1.0.32"
+    "0http-bun": "^1.1.0",
+    "bun-types": "^1.2.5",
+    "mitata": "^1.0.34",
+    "prettier": "^3.5.3"
   },
   "keywords": [
     "http",
