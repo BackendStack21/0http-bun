@@ -4,10 +4,10 @@
   "description": "0http for Bun",
   "main": "index.js",
   "scripts": {
-    "lint": "bun x standard",
+    "lint": "prettier --check **/*.js",
     "test": "bun test",
     "bench": "bun run bench.js",
-    "format": "prettier --write *.js"
+    "format": "prettier --write **/*.js"
   },
   "dependencies": {
     "fast-querystring": "^1.1.2",

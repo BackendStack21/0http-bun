@@ -1,10 +1,10 @@
 /* global Response */
 const http = require('../index')
 
-const { router } = http({})
+const {router} = http({})
 router.use((req, next) => {
   req.ctx = {
-    engine: 'bun'
+    engine: 'bun',
   }
 
   return next()
@@ -17,7 +17,7 @@ router.post('/', async (req) => {
 })
 router.delete('/:id', async (req) => {
   return Response.json(req.params, {
-    status: 200
+    status: 200,
   })
 })
 
