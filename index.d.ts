@@ -1,4 +1,4 @@
-import { IRouter, IRouterConfig } from './common'
+import {IRouter, IRouterConfig} from './common'
 
 export default function zero(config?: IRouterConfig): {
   router: IRouter

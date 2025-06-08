@@ -1,4 +1,4 @@
-import { Pattern, Methods } from 'trouter'
+import {Pattern, Methods} from 'trouter'
 
 export interface IRouterConfig {
   defaultRoute?: RequestHandler
@@ -16,7 +16,7 @@ type ZeroRequest = Request & {
 
 export type RequestHandler = (
   req: ZeroRequest,
-  next: StepFunction
+  next: StepFunction,
 ) => Response | Promise<Response>
 
 export interface IRouter {
