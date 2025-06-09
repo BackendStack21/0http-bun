@@ -1,89 +1,284 @@
-# Introduction
-Experimental, bun-based HTTP framework inspired by [0http](https://0http.21no.de/#/)
+# 0http-bun
 
-![Performance Benchmarks](0http-benchmarks.png)
-> MacBook Pro (13-inch, 2020) 
+A high-performance, minimalist HTTP framework for [Bun](https://bun.sh/), inspired by [0http](https://0http.21no.de/#/). Built specifically to leverage Bun's native performance capabilities with a developer-friendly API.
 
-## Usage
-```js
-const http = require('0http-bun')
+## Key Benefits
 
-const { router } = http({
-  port: 3000
+- **🚀 Bun-Native Performance**: Optimized for Bun's runtime with minimal overhead
+- **⚡ Zero Dependencies**: Core framework uses only essential, lightweight dependencies
+- **🔧 TypeScript First**: Full TypeScript support with comprehensive type definitions
+- **🎯 Minimalist API**: Clean, intuitive API that's easy to learn and use
+- **🔄 Middleware Support**: Flexible middleware system with async/await support
+- **📦 Tiny Footprint**: Lightweight framework focused on performance
+- **🛡️ Web Standards**: Built on standard Web APIs (Request/Response)
+
+## Installation
+
+```bash
+bun add 0http-bun
+```
+
+## Quick Start
+
+### Basic Server
+
+```typescript
+import http from '0http-bun'
+
+const {router} = http()
+
+router.get('/', () => {
+  return new Response('Hello World!')
 })
-router.use((req, next) => {
-  req.ctx = {
-    engine: 'bun'
-  }
 
+router.get('/:id', (req) => {
+  return Response.json({id: req.params.id})
+})
+
+// Start the server
+Bun.serve({
+  port: 3000,
+  fetch: router.fetch,
+})
+```
+
+### With TypeScript Types
+
+```typescript
+import http, {ZeroRequest, StepFunction} from '0http-bun'
+
+const {router} = http({
+  port: 3000,
+  errorHandler: (err: Error) => {
+    console.error('Server error:', err)
+    return new Response('Internal Server Error', {status: 500})
+  },
+})
+
+// Typed middleware
+router.use((req: ZeroRequest, next: StepFunction) => {
+  req.ctx = {
+    startTime: Date.now(),
+    engine: 'bun',
+  }
   return next()
 })
-router.get('/:id', async (req) => {
-  return Response.json(req.params)
-})
-router.post('/', async (req) => {
-  return new Response('POST')
-})
-router.delete('/:id', async (req) => {
-  return Response.json(req.params, {
-    status: 200
+
+// Typed route handlers
+router.get('/:id', async (req: ZeroRequest) => {
+  return Response.json({
+    id: req.params.id,
+    context: req.ctx,
   })
 })
 
-export default router
+router.post('/users', async (req: ZeroRequest) => {
+  const body = await req.json()
+  return Response.json({created: true, data: body}, {status: 201})
+})
 ```
-# Benchmarks
-## 0http-bun (bun v0.2.2)
+
+## API Reference
+
+### Router Configuration
+
+```typescript
+interface IRouterConfig {
+  defaultRoute?: RequestHandler // Custom 404 handler
+  errorHandler?: (err: Error) => Response | Promise<Response> // Error handler
+  port?: number // Port number (for reference)
+}
 ```
-% wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
-Running 10s test @ http://127.0.0.1:3000/hi
-  4 threads and 50 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   463.26us   99.23us   4.28ms   96.62%
-    Req/Sec    25.98k     1.10k   27.48k    76.73%
-  Latency Distribution
-     50%  442.00us
-     75%  466.00us
-     90%  485.00us
-     99%    0.91ms
-  1044377 requests in 10.10s, 127.49MB read
-Requests/sec: 103397.66
-Transfer/sec:     12.62MB
+
+### Request Object
+
+The `ZeroRequest` extends the standard `Request` with additional properties:
+
+```typescript
+type ZeroRequest = Request & {
+  params: Record<string, string> // URL parameters
+  query: Record<string, string> // Query string parameters
+  ctx?: Record<string, any> // Custom context (set by middleware)
+}
 ```
-## 0http (node v18.2.0)
+
+### Route Methods
+
+```typescript
+// HTTP Methods
+router.get(pattern, ...handlers)
+router.post(pattern, ...handlers)
+router.put(pattern, ...handlers)
+router.patch(pattern, ...handlers)
+router.delete(pattern, ...handlers)
+router.head(pattern, ...handlers)
+router.options(pattern, ...handlers)
+router.connect(pattern, ...handlers)
+router.trace(pattern, ...handlers)
+
+// Generic method
+router.on(method, pattern, ...handlers)
+
+// All methods
+router.all(pattern, ...handlers)
 ```
-% wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
-Running 10s test @ http://127.0.0.1:3000/hi
-  4 threads and 50 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     0.98ms  251.77us  13.04ms   95.09%
-    Req/Sec    12.31k   771.37    16.96k    95.29%
-  Latency Distribution
-     50%    0.95ms
-     75%    0.96ms
-     90%    0.98ms
-     99%    1.88ms
-  493899 requests in 10.10s, 63.59MB read
-Requests/sec:  48893.32
-Transfer/sec:      6.29MB
+
+### Middleware
+
+```typescript
+// Global middleware
+router.use((req, next) => {
+  // Middleware logic
+  return next()
+})
+
+// Path-specific middleware
+router.use('/api/*', (req, next) => {
+  // API-specific middleware
+  return next()
+})
+
+// Multiple middlewares
+router.use(authMiddleware, loggingMiddleware, (req, next) => next())
 ```
-## express (node v18.2.0)
+
+## Examples
+
+### Complete REST API
+
+```typescript
+import http, {ZeroRequest, StepFunction} from '0http-bun'
+
+const {router} = http({
+  errorHandler: (err: Error) => {
+    return Response.json({error: err.message}, {status: 500})
+  },
+})
+
+// Logging middleware
+router.use((req: ZeroRequest, next: StepFunction) => {
+  console.log(`${req.method} ${req.url}`)
+  return next()
+})
+
+// JSON body parser middleware for POST/PUT
+router.use('/api/*', async (req: ZeroRequest, next: StepFunction) => {
+  if (req.method === 'POST' || req.method === 'PUT') {
+    try {
+      req.ctx = {...req.ctx, body: await req.json()}
+    } catch (err) {
+      return Response.json({error: 'Invalid JSON'}, {status: 400})
+    }
+  }
+  return next()
+})
+
+// Routes
+router.get('/api/users', () => {
+  return Response.json([
+    {id: 1, name: 'John'},
+    {id: 2, name: 'Jane'},
+  ])
+})
+
+router.get('/api/users/:id', (req: ZeroRequest) => {
+  const {id} = req.params
+  return Response.json({id: Number(id), name: 'User'})
+})
+
+router.post('/api/users', (req: ZeroRequest) => {
+  const userData = req.ctx?.body
+  return Response.json({id: Date.now(), ...userData}, {status: 201})
+})
+
+router.delete('/api/users/:id', (req: ZeroRequest) => {
+  const {id} = req.params
+  return Response.json({deleted: id})
+})
+
+// Start server
+Bun.serve({
+  port: 3000,
+  fetch: router.fetch,
+})
 ```
-% wrk -t4 -c50 -d10s --latency http://127.0.0.1:3000/hi
-Running 10s test @ http://127.0.0.1:3000/hi
-  4 threads and 50 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     4.99ms    0.90ms  20.31ms   89.52%
-    Req/Sec     2.42k   154.52     2.66k    82.25%
-  Latency Distribution
-     50%    4.67ms
-     75%    4.83ms
-     90%    6.03ms
-     99%    8.43ms
-  96296 requests in 10.01s, 21.95MB read
-Requests/sec:   9622.74
-Transfer/sec:      2.19MB
+
+### Error Handling
+
+```typescript
+import http, {ZeroRequest} from '0http-bun'
+
+const {router} = http({
+  errorHandler: (err: Error) => {
+    console.error('Application error:', err)
+
+    // Custom error responses based on error type
+    if (err.name === 'ValidationError') {
+      return Response.json(
+        {error: 'Validation failed', details: err.message},
+        {status: 400},
+      )
+    }
+
+    return Response.json({error: 'Internal server error'}, {status: 500})
+  },
+  defaultRoute: () => {
+    return Response.json({error: 'Route not found'}, {status: 404})
+  },
+})
+
+// Route that might throw an error
+router.get('/api/risky', (req: ZeroRequest) => {
+  if (Math.random() > 0.5) {
+    const error = new Error('Random failure')
+    error.name = 'ValidationError'
+    throw error
+  }
+
+  return Response.json({success: true})
+})
 ```
-# Support / Donate 💚
-You can support the maintenance of this project: 
-- PayPal: https://www.paypal.me/kyberneees
+
+## Performance
+
+0http-bun is designed for high performance with Bun's native capabilities:
+
+- **Minimal overhead**: Direct use of Web APIs
+- **Efficient routing**: Based on the proven `trouter` library
+- **Fast parameter parsing**: Optimized URL parameter extraction
+- **Query string parsing**: Uses `fast-querystring` for performance
+
+### Benchmark Results
+
+Run benchmarks with:
+
+```bash
+bun run bench
+```
+
+## TypeScript Support
+
+Full TypeScript support is included with comprehensive type definitions:
+
+```typescript
+import {
+  ZeroRequest,
+  StepFunction,
+  RequestHandler,
+  IRouter,
+  IRouterConfig,
+} from '0http-bun'
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Related Projects
+
+- [0http](https://0http.21no.de/#/) - The original inspiration
+- [Bun](https://bun.sh/) - The JavaScript runtime this framework is built for
