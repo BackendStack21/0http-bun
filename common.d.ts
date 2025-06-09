@@ -1,4 +1,5 @@
 import {Pattern, Methods} from 'trouter'
+import {Logger} from 'pino'
 
 export interface IRouterConfig {
   defaultRoute?: RequestHandler
@@ -8,10 +9,44 @@ export interface IRouterConfig {
 
 export type StepFunction = (error?: unknown) => Response | Promise<Response>
 
-type ZeroRequest = Request & {
+export interface ParsedFile {
+  name: string
+  size: number
+  type: string
+  data: File
+}
+
+export type ZeroRequest = Request & {
   params: Record<string, string>
   query: Record<string, string>
-  ctx?: Record<string, any>
+  // Legacy compatibility properties (mirrored from ctx)
+  user?: any
+  jwt?: {
+    payload: any
+    header: any
+    token: string
+  }
+  apiKey?: string
+  // Context object for middleware data
+  ctx?: {
+    log?: Logger
+    user?: any
+    jwt?: {
+      payload: any
+      header: any
+      token: string
+    }
+    apiKey?: string
+    rateLimit?: {
+      limit: number
+      used: number
+      remaining: number
+      resetTime: Date
+    }
+    body?: any
+    files?: Record<string, ParsedFile | ParsedFile[]>
+    [key: string]: any
+  }
 }
 
 export type RequestHandler = (
