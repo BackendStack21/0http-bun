@@ -5,7 +5,6 @@ A high-performance, minimalist HTTP framework for [Bun](https://bun.sh/), inspir
 ## Key Benefits
 
 - **🚀 Bun-Native Performance**: Optimized for Bun's runtime with minimal overhead
-- **⚡ Zero Dependencies**: Core framework uses only essential, lightweight dependencies
 - **🔧 TypeScript First**: Full TypeScript support with comprehensive type definitions
 - **🎯 Minimalist API**: Clean, intuitive API that's easy to learn and use
 - **🔄 Middleware Support**: Flexible middleware system with async/await support
@@ -203,6 +202,42 @@ Bun.serve({
 })
 ```
 
+## Middleware Support
+
+0http-bun includes a comprehensive middleware system with built-in middlewares for common use cases:
+
+- **[Body Parser](./lib/middleware/README.md#body-parser)** - Automatic request body parsing (JSON, form data, text)
+- **[CORS](./lib/middleware/README.md#cors)** - Cross-Origin Resource Sharing with flexible configuration
+- **[JWT Authentication](./lib/middleware/README.md#jwt-authentication)** - JSON Web Token authentication and authorization
+- **[Logger](./lib/middleware/README.md#logger)** - Request logging with multiple output formats
+- **[Rate Limiting](./lib/middleware/README.md#rate-limiting)** - Flexible rate limiting with sliding window support
+
+### Quick Example
+
+```javascript
+// Import middleware functions from the middleware module
+const {
+  createCORS,
+  createLogger,
+  createBodyParser,
+  createJWTAuth,
+  createRateLimit,
+} = require('0http-bun/lib/middleware')
+
+const {router} = http()
+
+// Apply middleware stack
+router.use(createCORS()) // Enable CORS
+router.use(createLogger()) // Request logging
+router.use(createBodyParser()) // Parse request bodies
+router.use(createRateLimit({max: 100})) // Rate limiting
+
+// Protected routes
+router.use('/api/*', createJWTAuth({secret: process.env.JWT_SECRET}))
+```
+
+📖 **[Complete Middleware Documentation](./lib/middleware/README.md)**
+
 ### Error Handling
 
 ```typescript
@@ -245,8 +280,9 @@ router.get('/api/risky', (req: ZeroRequest) => {
 
 - **Minimal overhead**: Direct use of Web APIs
 - **Efficient routing**: Based on the proven `trouter` library
-- **Fast parameter parsing**: Optimized URL parameter extraction
-- **Query string parsing**: Uses `fast-querystring` for performance
+- **Fast parameter parsing**: Optimized URL parameter extraction with caching
+- **Query string parsing**: Uses `fast-querystring` for optimal performance
+- **Memory efficient**: Route caching and object reuse to minimize allocations
 
 ### Benchmark Results
 
@@ -256,11 +292,14 @@ Run benchmarks with:
 bun run bench
 ```
 
+_Performance characteristics will vary based on your specific use case and middleware stack._
+
 ## TypeScript Support
 
 Full TypeScript support is included with comprehensive type definitions:
 
 ```typescript
+// Main framework types
 import {
   ZeroRequest,
   StepFunction,
@@ -268,6 +307,36 @@ import {
   IRouter,
   IRouterConfig,
 } from '0http-bun'
+
+// Middleware-specific types
+import {
+  LoggerOptions,
+  JWTAuthOptions,
+  APIKeyAuthOptions,
+  RateLimitOptions,
+  CORSOptions,
+  BodyParserOptions,
+  MemoryStore,
+} from '0http-bun/lib/middleware'
+
+// Example typed middleware
+const customMiddleware: RequestHandler = (
+  req: ZeroRequest,
+  next: StepFunction,
+) => {
+  req.ctx = req.ctx || {}
+  req.ctx.timestamp = Date.now()
+  return next()
+}
+
+// Example typed route handler
+const typedHandler = (req: ZeroRequest): Response => {
+  return Response.json({
+    params: req.params,
+    query: req.query,
+    context: req.ctx,
+  })
+}
 ```
 
 ## License

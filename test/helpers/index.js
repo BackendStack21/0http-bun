@@ -26,7 +26,35 @@ function createTestRequest(method = 'GET', path = '/', options = {}) {
     requestInit.headers['Content-Type'] = 'application/json'
   }
 
-  return new Request(url, requestInit)
+  // Create a real Request object first
+  const request = new Request(url, requestInit)
+
+  // Create a mutable proxy that allows header mutation for testing
+  const mutableRequest = {
+    method: request.method,
+    url: request.url,
+    headers: new Headers(requestInit.headers || {}),
+    body: request.body,
+    json: request.json.bind(request),
+    text: request.text.bind(request),
+    arrayBuffer: request.arrayBuffer.bind(request),
+    formData: request.formData.bind(request),
+    blob: request.blob.bind(request),
+    clone: request.clone.bind(request),
+    bodyUsed: request.bodyUsed,
+    cache: request.cache,
+    credentials: request.credentials,
+    destination: request.destination,
+    integrity: request.integrity,
+    mode: request.mode,
+    redirect: request.redirect,
+    referrer: request.referrer,
+    referrerPolicy: request.referrerPolicy,
+    signal: request.signal,
+    ctx: {},
+  }
+
+  return mutableRequest
 }
 
 /**
