@@ -432,6 +432,43 @@ describe('Rate Limit Middleware', () => {
       expect(req.rateLimit).toBeDefined() // Confirms we're in the fallback path
       expect(req.rateLimit.current).toBe(1) // Fallback incremented with 'unknown' key
     })
+
+    it('should include rate-limit headers in fallback path after key generation error', async () => {
+      const faultyKeyGenerator = jest.fn(() => {
+        throw new Error('Key generation error')
+      })
+
+      // Create a Response object to be returned by next()
+      const testResponse = new Response('test content', {
+        status: 200,
+        headers: {'X-Test': 'value'},
+      })
+
+      const nextFunc = jest.fn(() => testResponse)
+
+      const middleware = rateLimit({
+        windowMs: 60000,
+        max: 5,
+        keyGenerator: faultyKeyGenerator,
+        standardHeaders: true, // Ensure headers are enabled
+      })
+
+      const result = await middleware(req, nextFunc)
+
+      // Should return the response with added rate-limit headers
+      expect(result).toBe(testResponse)
+      expect(result.status).toBe(200)
+
+      // Verify rate-limit headers were added to the response
+      expect(result.headers.get('X-RateLimit-Limit')).toBe('5')
+      expect(result.headers.get('X-RateLimit-Remaining')).toBe('4') // 5 - 1 = 4
+      expect(result.headers.get('X-RateLimit-Used')).toBe('1')
+      expect(result.headers.get('X-RateLimit-Reset')).toBeTruthy()
+
+      // Verify we're in the fallback path
+      expect(req.rateLimit).toBeDefined()
+      expect(req.rateLimit.current).toBe(1) // Fallback incremented with 'unknown' key
+    })
   })
 
   describe('MemoryStore', () => {
