@@ -5,7 +5,6 @@ A high-performance, minimalist HTTP framework for [Bun](https://bun.sh/), inspir
 ## Key Benefits
 
 - **🚀 Bun-Native Performance**: Optimized for Bun's runtime with minimal overhead
-- **⚡ Minimal Dependencies**: Only 2 essential dependencies (`trouter`, `fast-querystring`)
 - **🔧 TypeScript First**: Full TypeScript support with comprehensive type definitions
 - **🎯 Minimalist API**: Clean, intuitive API that's easy to learn and use
 - **🔄 Middleware Support**: Flexible middleware system with async/await support

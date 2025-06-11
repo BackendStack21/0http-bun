@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "fast-querystring": "^1.1.2",
-    "trouter": "^4.0.0"
+    "trouter": "^4.0.0",
+    "jose": "^6.0.11",
+    "pino": "^9.7.0"
   },
   "repository": {
     "type": "git",
@@ -26,9 +28,6 @@
     "lib/"
   ],
   "devDependencies": {
-    "cors": "^2.8.5",
-    "jose": "^6.0.11",
-    "pino": "^9.7.0",
     "0http-bun": "^1.1.2",
     "bun-types": "^1.2.15",
     "mitata": "^1.0.34",
