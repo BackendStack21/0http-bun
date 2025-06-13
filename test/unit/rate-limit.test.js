@@ -301,7 +301,7 @@ describe('Rate Limit Middleware', () => {
       expect(response.status).toBe(200) // Should still work with fallback key
     })
 
-    it('should handle key generator errors', async () => {
+    it('should let key generator errors bubble up', async () => {
       const faultyKeyGenerator = jest.fn(() => {
         throw new Error('Key generation error')
       })
@@ -312,34 +312,13 @@ describe('Rate Limit Middleware', () => {
         keyGenerator: faultyKeyGenerator,
       })
 
-      const response = await middleware(req, next)
-      expect(response.status).toBe(200) // Should fallback gracefully
+      // Should throw and bubble up the error
+      await expect(middleware(req, next)).rejects.toThrow(
+        'Key generation error',
+      )
     })
 
-    it('should handle key generator errors with fallback', async () => {
-      const faultyKeyGenerator = jest.fn(() => {
-        throw new Error('Key generation error')
-      })
-
-      const middleware = rateLimit({
-        windowMs: 60000,
-        max: 5,
-        keyGenerator: faultyKeyGenerator,
-      })
-
-      const response = await middleware(req, next)
-      expect(response.status).toBe(200)
-      // Should fallback to 'unknown' key and continue
-      expect(req.rateLimit).toBeDefined()
-      expect(req.rateLimit.limit).toBe(5)
-    })
-
-    it('should handle double key generation failure gracefully', async () => {
-      const faultyKeyGenerator = jest.fn(() => {
-        throw new Error('Key generation error')
-      })
-
-      // Mock store.increment to also throw error
+    it('should let store errors bubble up', async () => {
       const faultyStore = {
         increment: jest.fn(() => {
           throw new Error('Store error')
@@ -349,125 +328,11 @@ describe('Rate Limit Middleware', () => {
       const middleware = rateLimit({
         windowMs: 60000,
         max: 5,
-        keyGenerator: faultyKeyGenerator,
         store: faultyStore,
       })
 
-      const response = await middleware(req, next)
-      expect(response.status).toBe(200) // Should fallback and continue
-    })
-
-    it('should handle fallback error case returning response without headers', async () => {
-      const faultyKeyGenerator = jest.fn(() => {
-        throw new Error('Key generation error')
-      })
-
-      // Create a next function that returns a Response object
-      const nextWithResponse = jest.fn(
-        () => new Response('Success', {status: 200}),
-      )
-
-      const middleware = rateLimit({
-        windowMs: 60000,
-        max: 5,
-        keyGenerator: faultyKeyGenerator,
-      })
-
-      const response = await middleware(req, nextWithResponse)
-      expect(response.status).toBe(200)
-      expect(response instanceof Response).toBe(true)
-      // This should hit line 147 - return response without headers
-    })
-
-    it('should hit the specific fallback return path without adding headers', async () => {
-      const faultyKeyGenerator = jest.fn(() => {
-        throw new Error('Key generation error')
-      })
-
-      // Mock a response that will be returned from next()
-      const mockResponse = new Response('fallback success', {status: 200})
-      const nextReturningResponse = jest.fn(() => mockResponse)
-
-      const middleware = rateLimit({
-        windowMs: 60000,
-        max: 5,
-        keyGenerator: faultyKeyGenerator,
-      })
-
-      const response = await middleware(req, nextReturningResponse)
-      expect(response).toBe(mockResponse) // Should return the exact same response object
-      expect(response.status).toBe(200)
-
-      // Verify it's the fallback path by checking rate limit context was set
-      expect(req.rateLimit).toBeDefined()
-      expect(req.rateLimit.limit).toBe(5)
-    })
-
-    it('should execute fallback error path line 147 specifically', async () => {
-      const faultyKeyGenerator = jest.fn(() => {
-        throw new Error('Key generation error')
-      })
-
-      // Create middleware with error-prone keyGenerator
-      const middleware = rateLimit({
-        windowMs: 60000,
-        max: 5,
-        keyGenerator: faultyKeyGenerator,
-        standardHeaders: false, // Disable headers to ensure we hit the specific path
-      })
-
-      // Create a Response object to be returned by next()
-      const testResponse = new Response('test content', {
-        status: 200,
-        headers: {'X-Test': 'value'},
-      })
-
-      const nextFunc = jest.fn(() => testResponse)
-
-      const result = await middleware(req, nextFunc)
-
-      // This should hit line 147: return response (without headers)
-      expect(result).toBe(testResponse)
-      expect(result.status).toBe(200)
-      expect(req.rateLimit).toBeDefined() // Confirms we're in the fallback path
-      expect(req.rateLimit.current).toBe(1) // Fallback incremented with 'unknown' key
-    })
-
-    it('should include rate-limit headers in fallback path after key generation error', async () => {
-      const faultyKeyGenerator = jest.fn(() => {
-        throw new Error('Key generation error')
-      })
-
-      // Create a Response object to be returned by next()
-      const testResponse = new Response('test content', {
-        status: 200,
-        headers: {'X-Test': 'value'},
-      })
-
-      const nextFunc = jest.fn(() => testResponse)
-
-      const middleware = rateLimit({
-        windowMs: 60000,
-        max: 5,
-        keyGenerator: faultyKeyGenerator,
-        standardHeaders: true, // Ensure headers are enabled
-      })
-
-      const result = await middleware(req, nextFunc)
-
-      // Should return the response with added rate-limit headers
-      expect(result).toBe(testResponse)
-      expect(result.status).toBe(200)
-
-      // Verify rate-limit headers were added to the response
-      expect(result.headers.get('X-RateLimit-Limit')).toBe('5')
-      expect(result.headers.get('X-RateLimit-Remaining')).toBe('4') // 5 - 1 = 4
-      expect(result.headers.get('X-RateLimit-Used')).toBe('1')
-      expect(result.headers.get('X-RateLimit-Reset')).toBeTruthy()
-
-      // Verify we're in the fallback path
-      expect(req.rateLimit).toBeDefined()
-      expect(req.rateLimit.current).toBe(1) // Fallback incremented with 'unknown' key
+      // Should throw and bubble up the error
+      await expect(middleware(req, next)).rejects.toThrow('Store error')
     })
   })
 
@@ -690,7 +555,7 @@ describe('Rate Limit Middleware', () => {
       expect(req.ctx.rateLimit.resetTime).toBeDefined()
     })
 
-    it('should handle key generation errors in sliding window', async () => {
+    it('should let key generation errors bubble up in sliding window', async () => {
       const faultyKeyGenerator = jest.fn(() => {
         throw new Error('Key generation error')
       })
@@ -701,8 +566,10 @@ describe('Rate Limit Middleware', () => {
         keyGenerator: faultyKeyGenerator,
       })
 
-      const response = await middleware(req, next)
-      expect(response.status).toBe(200) // Should fallback gracefully
+      // Should throw and bubble up the error
+      await expect(middleware(req, next)).rejects.toThrow(
+        'Key generation error',
+      )
     })
 
     it('should use custom handler in sliding window', async () => {
