@@ -28,8 +28,8 @@
     "lib/"
   ],
   "devDependencies": {
-    "0http-bun": "^1.1.2",
-    "bun-types": "^1.2.15",
+    "0http-bun": "^1.2.1",
+    "bun-types": "^1.2.16",
     "mitata": "^1.0.34",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3"
