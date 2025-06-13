@@ -173,7 +173,7 @@ router.use(
     },
   }),
 )
-````
+```
 
 **TypeScript Usage:**
 
@@ -590,14 +590,126 @@ class CustomStore implements RateLimitStore {
 }
 ```
 
-````
+#### Sliding Window Rate Limiter
+
+For more precise rate limiting, use the sliding window implementation that **prevents burst traffic** at any point in time:
+
+```javascript
+const {createSlidingWindowRateLimit} = require('0http-bun/lib/middleware')
+
+// Basic sliding window rate limiter
+router.use(
+  createSlidingWindowRateLimit({
+    windowMs: 60 * 1000, // 1 minute sliding window
+    max: 10, // Max 10 requests per minute
+    keyGenerator: (req) => req.headers.get('x-forwarded-for') || 'default',
+  }),
+)
+```
+
+**TypeScript Usage:**
+
+```typescript
+import {createSlidingWindowRateLimit} from '0http-bun/lib/middleware'
+import type {RateLimitOptions} from '0http-bun/lib/middleware'
+
+const slidingOptions: RateLimitOptions = {
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 requests max
+  keyGenerator: (req) => req.user?.id || req.headers.get('x-forwarded-for'),
+  handler: (req, hits, max, resetTime) => {
+    return Response.json(
+      {
+        error: 'Rate limit exceeded',
+        retryAfter: Math.ceil((resetTime.getTime() - Date.now()) / 1000),
+        limit: max,
+        used: hits,
+      },
+      {status: 429},
+    )
+  },
+}
+
+router.use(createSlidingWindowRateLimit(slidingOptions))
+```
+
+**How Sliding Window Differs from Fixed Window:**
+
+The sliding window approach provides **more accurate and fair rate limiting** by tracking individual request timestamps:
+
+- **Fixed Window**: Divides time into discrete chunks (e.g., 09:00:00-09:00:59, 09:01:00-09:01:59)
+  - ⚠️ **Problem**: Allows burst traffic at window boundaries (20 requests in 2 seconds)
+- **Sliding Window**: Uses a continuous, moving time window from current moment
+  - ✅ **Advantage**: Prevents bursts at any point in time (true rate limiting)
+
+**Use Cases for Sliding Window:**
+
+```javascript
+// Financial API - Zero tolerance for payment bursts
+router.use(
+  '/api/payments/*',
+  createSlidingWindowRateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 3, // Only 3 payment attempts per minute
+    keyGenerator: (req) => req.user.accountId,
+  }),
+)
+
+// User Registration - Prevent automated signups
+router.use(
+  '/api/register',
+  createSlidingWindowRateLimit({
+    windowMs: 3600 * 1000, // 1 hour
+    max: 3, // 3 accounts per IP per hour
+    keyGenerator: (req) => req.headers.get('x-forwarded-for'),
+  }),
+)
+
+// File Upload - Prevent abuse
+router.use(
+  '/api/upload',
+  createSlidingWindowRateLimit({
+    windowMs: 300 * 1000, // 5 minutes
+    max: 10, // 10 uploads per 5 minutes
+    keyGenerator: (req) => req.user.id,
+  }),
+)
+```
+
+**Performance Considerations:**
+
+- **Memory Usage**: Higher than fixed window (stores timestamp arrays)
+- **Time Complexity**: O(n) per request where n = requests in window
+- **Best For**: Critical APIs, financial transactions, user-facing features
+- **Use Fixed Window For**: High-volume APIs where approximate limiting is acceptable
+
+**Advanced Configuration:**
+
+```typescript
+// Tiered rate limiting based on user level
+const createTieredRateLimit = (req) => {
+  const userTier = req.user?.tier || 'free'
+  const configs = {
+    free: {windowMs: 60 * 1000, max: 10},
+    premium: {windowMs: 60 * 1000, max: 100},
+    enterprise: {windowMs: 60 * 1000, max: 1000},
+  }
+  return createSlidingWindowRateLimit(configs[userTier])
+}
+```
 
 **Rate Limit Headers:**
+
+Both rate limiters send the following headers when `standardHeaders: true`:
 
 - `X-RateLimit-Limit` - Request limit
 - `X-RateLimit-Remaining` - Remaining requests
 - `X-RateLimit-Reset` - Reset time (Unix timestamp)
 - `X-RateLimit-Used` - Used requests
+
+**Error Handling:**
+
+Rate limiting middleware allows errors to bubble up as proper HTTP 500 responses. If your `keyGenerator` function or custom `store.increment()` method throws an error, it will not be caught and masked - the error will propagate up the middleware chain for proper error handling.
 
 ## Creating Custom Middleware
 
@@ -619,7 +731,7 @@ const customMiddleware = (req: ZeroRequest, next: StepFunction) => {
 }
 
 router.use(customMiddleware)
-````
+```
 
 ### Async Middleware
 
