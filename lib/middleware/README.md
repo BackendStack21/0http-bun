@@ -10,13 +10,13 @@ Install only the dependencies you need:
 
 ```bash
 # For JWT Authentication middleware
-npm install jose
+bun install jose
 
 # For Logger middleware
-npm install pino
+bun install pino
 
 # For Prometheus Metrics middleware
-npm install prom-client
+bun install prom-client
 ```
 
 **Benefits of Lazy Loading:**
@@ -91,6 +91,9 @@ const {
   createJWTAuth,
   createLogger,
   createRateLimit,
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
 } = require('0http-bun/lib/middleware')
 ```
 
@@ -104,6 +107,9 @@ import {
   createJWTAuth,
   createLogger,
   createRateLimit,
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
 } from '0http-bun/lib/middleware'
 
 // Import types
@@ -224,7 +230,7 @@ router.use(createCORS(corsOptions))
 
 JSON Web Token authentication and authorization middleware with support for static secrets, JWKS endpoints, and API key authentication.
 
-> 📦 **Required dependency**: `npm install jose`
+> 📦 **Required dependency**: `bun install jose`
 
 #### Basic JWT with Static Secret
 
@@ -477,7 +483,7 @@ router.get('/api/profile', (req) => {
 
 Request logging middleware with customizable output formats.
 
-> 📦 **Required dependency for structured logging**: `npm install pino`  
+> 📦 **Required dependency for structured logging**: `bun install pino`  
 > ✅ **Simple logger** (`simpleLogger`) has no dependencies - uses `console.log`
 
 ```javascript
@@ -542,10 +548,14 @@ router.use(createLogger(loggerOptions))
 
 Comprehensive Prometheus metrics integration for monitoring and observability with built-in security and performance optimizations.
 
-> 📦 **Required dependency**: `npm install prom-client`
+> 📦 **Required dependency**: `bun install prom-client`
 
 ```javascript
-import {createPrometheusIntegration} from '0http-bun/lib/middleware/prometheus'
+const {
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
+} = require('0http-bun/lib/middleware')
 
 // Simple setup with default metrics
 const prometheus = createPrometheusIntegration()
@@ -568,6 +578,12 @@ The Prometheus middleware automatically collects:
 #### Advanced Configuration
 
 ```javascript
+const {
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
+} = require('0http-bun/lib/middleware')
+
 const prometheus = createPrometheusIntegration({
   // Control default Node.js metrics collection
   collectDefaultMetrics: true,
@@ -602,6 +618,12 @@ const prometheus = createPrometheusIntegration({
 #### Custom Business Metrics
 
 ```javascript
+const {
+  createPrometheusIntegration,
+} = require('0http-bun/lib/middleware')
+
+// Get the prometheus client from the integration
+const prometheus = createPrometheusIntegration()
 const {promClient} = prometheus
 
 // Create custom metrics
@@ -644,6 +666,8 @@ router.post('/orders', async (req) => {
 #### Metrics Endpoint Options
 
 ```javascript
+const {createMetricsHandler} = require('0http-bun/lib/middleware')
+
 // Custom metrics endpoint
 const metricsHandler = createMetricsHandler({
   endpoint: '/custom-metrics', // Default: '/metrics'
@@ -1029,8 +1053,8 @@ Apply middleware only to specific paths:
 
 ```typescript
 // API-only middleware
-router.use('/api/*', jwtAuth({secret: 'api-secret'}))
-router.use('/api/*', rateLimit({max: 1000}))
+router.use('/api/*', createJWTAuth({secret: 'api-secret'}))
+router.use('/api/*', createRateLimit({max: 1000}))
 
 // Admin-only middleware
 router.use('/admin/*', adminAuthMiddleware)
@@ -1112,14 +1136,14 @@ For your convenience, here's a quick reference of which dependencies you need to
 | **CORS**                | ✅ None               | Built-in                  |
 | **Rate Limiting**       | ✅ None               | Built-in                  |
 | **Logger** (simple)     | ✅ None               | Built-in                  |
-| **Logger** (structured) | 📦 `pino`             | `npm install pino`        |
-| **JWT Authentication**  | 📦 `jose`             | `npm install jose`        |
-| **Prometheus Metrics**  | 📦 `prom-client`      | `npm install prom-client` |
+| **Logger** (structured) | 📦 `pino`             | `bun install pino`        |
+| **JWT Authentication**  | 📦 `jose`             | `bun install jose`        |
+| **Prometheus Metrics**  | 📦 `prom-client`      | `bun install prom-client` |
 
 **Install all optional dependencies at once:**
 
 ```bash
-npm install pino jose prom-client
+bun install pino jose prom-client
 ```
 
 This middleware stack provides a solid foundation for most web applications with security, logging, and performance features built-in.
