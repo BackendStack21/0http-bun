@@ -1,5 +1,4 @@
-import {RequestHandler, ZeroRequest, StepFunction} from '../../common'
-import {Logger} from 'pino'
+import {RequestHandler, ZeroRequest} from '../../common'
 
 // Logger middleware types
 export interface LoggerOptions {
@@ -234,3 +233,68 @@ export function createMultipartParser(
 export function createBodyParser(options?: BodyParserOptions): RequestHandler
 export function hasBody(req: ZeroRequest): boolean
 export function shouldParse(req: ZeroRequest, type: string): boolean
+
+// Prometheus metrics middleware types
+export interface PrometheusMetrics {
+  httpRequestDuration: any // prom-client Histogram
+  httpRequestTotal: any // prom-client Counter
+  httpRequestSize: any // prom-client Histogram
+  httpResponseSize: any // prom-client Histogram
+  httpActiveConnections: any // prom-client Gauge
+}
+
+export interface PrometheusMiddlewareOptions {
+  /** Custom metrics object to use instead of default metrics */
+  metrics?: PrometheusMetrics
+  /** Paths to exclude from metrics collection (default: ['/health', '/ping', '/favicon.ico', '/metrics']) */
+  excludePaths?: string[]
+  /** Whether to collect default Node.js metrics (default: true) */
+  collectDefaultMetrics?: boolean
+  /** Custom route normalization function */
+  normalizeRoute?: (req: ZeroRequest) => string
+  /** Custom label extraction function */
+  extractLabels?: (
+    req: ZeroRequest,
+    response: Response,
+  ) => Record<string, string>
+  /** HTTP methods to skip from metrics collection */
+  skipMethods?: string[]
+}
+
+export interface MetricsHandlerOptions {
+  /** The endpoint path for metrics (default: '/metrics') */
+  endpoint?: string
+  /** Custom Prometheus registry to use */
+  registry?: any // prom-client Registry
+}
+
+export interface PrometheusIntegration {
+  /** The middleware function */
+  middleware: RequestHandler
+  /** The metrics handler function */
+  metricsHandler: RequestHandler
+  /** The Prometheus registry */
+  registry: any // prom-client Registry
+  /** The prom-client module */
+  promClient: any
+}
+
+export function createPrometheusMiddleware(
+  options?: PrometheusMiddlewareOptions,
+): RequestHandler
+export function createMetricsHandler(
+  options?: MetricsHandlerOptions,
+): RequestHandler
+export function createPrometheusIntegration(
+  options?: PrometheusMiddlewareOptions & MetricsHandlerOptions,
+): PrometheusIntegration
+export function createDefaultMetrics(): PrometheusMetrics
+export function extractRoutePattern(req: ZeroRequest): string
+
+// Simple interface exports for common use cases
+export const logger: typeof createLogger
+export const jwtAuth: typeof createJWTAuth
+export const rateLimit: typeof createRateLimit
+export const cors: typeof createCORS
+export const bodyParser: typeof createBodyParser
+export const prometheus: typeof createPrometheusIntegration
