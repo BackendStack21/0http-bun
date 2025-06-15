@@ -23,6 +23,12 @@ import {
   createTextParser,
   createURLEncodedParser,
   createMultipartParser,
+  // Prometheus middleware functions
+  createPrometheusIntegration,
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createDefaultMetrics,
+  extractRoutePattern,
   // Type definitions
   JWTAuthOptions,
   APIKeyAuthOptions,
@@ -38,6 +44,11 @@ import {
   MultipartParserOptions,
   JWKSLike,
   TokenExtractionOptions,
+  // Prometheus type definitions
+  PrometheusMiddlewareOptions,
+  MetricsHandlerOptions,
+  PrometheusIntegration,
+  PrometheusMetrics,
   // Available utility functions
   extractTokenFromHeader,
   defaultKeyGenerator,
@@ -391,6 +402,206 @@ const testBodyParserUtilities = (req: ZeroRequest) => {
 }
 
 // =============================================================================
+// PROMETHEUS METRICS MIDDLEWARE VALIDATION
+// =============================================================================
+
+console.log('✅ Prometheus Metrics Middleware')
+
+// Clear the Prometheus registry at the start to avoid conflicts
+try {
+  const promClient = require('prom-client')
+  promClient.register.clear()
+} catch (error) {
+  // Ignore if prom-client is not available
+}
+
+// Test comprehensive Prometheus middleware options
+const prometheusMiddlewareOptions: PrometheusMiddlewareOptions = {
+  // Use custom metrics to avoid registry conflicts
+  metrics: undefined, // Will create default metrics once
+
+  // Paths to exclude from metrics collection
+  excludePaths: ['/health', '/ping', '/favicon.ico', '/metrics'],
+
+  // Whether to collect default Node.js metrics
+  collectDefaultMetrics: false, // Disable to avoid conflicts
+
+  // Custom route normalization function
+  normalizeRoute: (req: ZeroRequest) => {
+    const url = new URL(req.url, 'http://localhost')
+    let pathname = url.pathname
+
+    // Custom normalization logic
+    return pathname
+      .replace(/\/users\/\d+/, '/users/:id')
+      .replace(/\/api\/v\d+/, '/api/:version')
+      .replace(/\/items\/[a-f0-9-]{36}/, '/items/:uuid')
+  },
+
+  // Custom label extraction function
+  extractLabels: (req: ZeroRequest, response: Response) => {
+    return {
+      user_type: req.headers.get('x-user-type') || 'anonymous',
+      api_version: req.headers.get('x-api-version') || 'v1',
+      region: req.headers.get('x-region') || 'us-east-1',
+    }
+  },
+
+  // HTTP methods to skip from metrics collection
+  skipMethods: ['OPTIONS', 'HEAD'],
+}
+
+// Test metrics handler options
+const metricsHandlerOptions: MetricsHandlerOptions = {
+  endpoint: '/custom-metrics',
+  registry: undefined, // Would be prom-client registry in real usage
+}
+
+// Test creating individual components (create only once to avoid registry conflicts)
+const defaultMetrics: PrometheusMetrics = createDefaultMetrics()
+const prometheusMiddleware = createPrometheusMiddleware({
+  ...prometheusMiddlewareOptions,
+  metrics: defaultMetrics,
+})
+const metricsHandler = createMetricsHandler(metricsHandlerOptions)
+
+// Test the integration function (use existing metrics)
+const prometheusIntegration: PrometheusIntegration =
+  createPrometheusIntegration({
+    ...prometheusMiddlewareOptions,
+    ...metricsHandlerOptions,
+    metrics: defaultMetrics, // Reuse existing metrics
+  })
+
+// Test the integration object structure
+const testPrometheusIntegration = () => {
+  // Test middleware function
+  const middleware: RequestHandler = prometheusIntegration.middleware
+
+  // Test metrics handler function
+  const handler: RequestHandler = prometheusIntegration.metricsHandler
+
+  // Test registry access
+  const registry = prometheusIntegration.registry
+
+  // Test prom-client access for custom metrics
+  const promClient = prometheusIntegration.promClient
+}
+
+// Test default metrics structure
+const testDefaultMetrics = () => {
+  // Use the already created metrics to avoid registry conflicts
+  const metrics = defaultMetrics
+
+  // Test that all expected metrics are present
+  const duration = metrics.httpRequestDuration
+  const total = metrics.httpRequestTotal
+  const requestSize = metrics.httpRequestSize
+  const responseSize = metrics.httpResponseSize
+  const activeConnections = metrics.httpActiveConnections
+
+  // All should be defined (prom-client objects)
+  console.assert(
+    duration !== undefined,
+    'httpRequestDuration should be defined',
+  )
+  console.assert(total !== undefined, 'httpRequestTotal should be defined')
+  console.assert(requestSize !== undefined, 'httpRequestSize should be defined')
+  console.assert(
+    responseSize !== undefined,
+    'httpResponseSize should be defined',
+  )
+  console.assert(
+    activeConnections !== undefined,
+    'httpActiveConnections should be defined',
+  )
+}
+
+// Test route pattern extraction
+const testRoutePatternExtraction = () => {
+  // Mock request objects for testing (using unknown casting for test purposes)
+  const reqWithContext = {
+    ctx: {route: '/users/:id'},
+    url: 'http://localhost:3000/users/123',
+  } as unknown as ZeroRequest
+
+  const reqWithParams = {
+    url: 'http://localhost:3000/users/123',
+    params: {id: '123'},
+  } as unknown as ZeroRequest
+
+  const reqWithUUID = {
+    url: 'http://localhost:3000/items/550e8400-e29b-41d4-a716-446655440000',
+  } as unknown as ZeroRequest
+
+  const reqWithNumericId = {
+    url: 'http://localhost:3000/posts/12345',
+  } as unknown as ZeroRequest
+
+  const reqWithLongToken = {
+    url: 'http://localhost:3000/auth/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+  } as unknown as ZeroRequest
+
+  const reqMalformed = {
+    url: 'not-a-valid-url',
+  } as unknown as ZeroRequest
+
+  // Test route extraction
+  const pattern1 = extractRoutePattern(reqWithContext)
+  const pattern2 = extractRoutePattern(reqWithParams)
+  const pattern3 = extractRoutePattern(reqWithUUID)
+  const pattern4 = extractRoutePattern(reqWithNumericId)
+  const pattern5 = extractRoutePattern(reqWithLongToken)
+  const pattern6 = extractRoutePattern(reqMalformed)
+
+  // All should return strings (exact patterns depend on implementation)
+  console.assert(typeof pattern1 === 'string', 'Route pattern should be string')
+  console.assert(typeof pattern2 === 'string', 'Route pattern should be string')
+  console.assert(typeof pattern3 === 'string', 'Route pattern should be string')
+  console.assert(typeof pattern4 === 'string', 'Route pattern should be string')
+  console.assert(typeof pattern5 === 'string', 'Route pattern should be string')
+  console.assert(typeof pattern6 === 'string', 'Route pattern should be string')
+}
+
+// Test custom metrics scenarios
+const testCustomMetricsScenarios = () => {
+  // Create custom metrics object (reuse existing to avoid conflicts)
+  const customMetrics: PrometheusMetrics = defaultMetrics
+
+  // Use custom metrics in middleware
+  const middlewareWithCustomMetrics = createPrometheusMiddleware({
+    metrics: customMetrics,
+    collectDefaultMetrics: false,
+  })
+
+  // Test minimal configuration (reuse existing metrics)
+  const minimalMiddleware = createPrometheusMiddleware({
+    metrics: customMetrics,
+    collectDefaultMetrics: false,
+  })
+  const minimalIntegration = createPrometheusIntegration({
+    metrics: customMetrics,
+    collectDefaultMetrics: false,
+  })
+
+  // Test with only specific options
+  const selectiveOptions: PrometheusMiddlewareOptions = {
+    excludePaths: ['/api/internal/*'],
+    skipMethods: ['TRACE', 'CONNECT'],
+    metrics: customMetrics, // Reuse existing
+    collectDefaultMetrics: false, // Disable to avoid conflicts
+  }
+
+  const selectiveMiddleware = createPrometheusMiddleware(selectiveOptions)
+}
+
+// Execute Prometheus tests
+testPrometheusIntegration()
+testDefaultMetrics()
+testRoutePatternExtraction()
+testCustomMetricsScenarios()
+
+// =============================================================================
 // COMPLEX INTEGRATION SCENARIOS
 // =============================================================================
 
@@ -433,6 +644,27 @@ const fullMiddlewareStack = () => {
       json: {limit: 1024 * 1024},
     }),
   )
+
+  // Prometheus metrics middleware (reuse existing metrics to avoid registry conflicts)
+  router.use(
+    createPrometheusMiddleware({
+      metrics: defaultMetrics, // Reuse existing metrics
+      collectDefaultMetrics: false, // Disable to avoid conflicts
+      excludePaths: ['/health', '/metrics'],
+      extractLabels: (req: ZeroRequest, response: Response) => ({
+        user_type: req.ctx?.user?.type || 'anonymous',
+        api_version: req.headers.get('x-api-version') || 'v1',
+      }),
+    }),
+  )
+
+  // Metrics endpoint (reuse existing metrics)
+  const prometheusIntegration = createPrometheusIntegration({
+    endpoint: '/metrics',
+    metrics: defaultMetrics, // Reuse existing metrics
+    collectDefaultMetrics: false, // Disable to avoid conflicts
+  })
+  router.get('/metrics', prometheusIntegration.metricsHandler)
 
   // JWT authentication for API routes
   router.use(
@@ -554,6 +786,12 @@ const runValidations = async () => {
   testRateLimitUtilities(mockRequest)
   testCORSUtilities(mockRequest)
   testBodyParserUtilities(mockRequest)
+
+  // Test Prometheus utilities
+  testPrometheusIntegration()
+  testDefaultMetrics()
+  testRoutePatternExtraction()
+  testCustomMetricsScenarios()
 }
 
 // Run all validations
@@ -567,6 +805,7 @@ runValidations()
     console.log('✅ Rate limiting middleware')
     console.log('✅ CORS middleware')
     console.log('✅ Body parser middleware')
+    console.log('✅ Prometheus metrics middleware')
     console.log('✅ Complex integration scenarios')
     console.log('✅ Error handling scenarios')
     console.log('✅ Async middleware patterns')
