@@ -91,6 +91,9 @@ const {
   createJWTAuth,
   createLogger,
   createRateLimit,
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
 } = require('0http-bun/lib/middleware')
 ```
 
@@ -104,6 +107,9 @@ import {
   createJWTAuth,
   createLogger,
   createRateLimit,
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
 } from '0http-bun/lib/middleware'
 
 // Import types
@@ -545,7 +551,11 @@ Comprehensive Prometheus metrics integration for monitoring and observability wi
 > 📦 **Required dependency**: `bun install prom-client`
 
 ```javascript
-import {createPrometheusIntegration} from '0http-bun/lib/middleware/prometheus'
+const {
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
+} = require('0http-bun/lib/middleware')
 
 // Simple setup with default metrics
 const prometheus = createPrometheusIntegration()
@@ -568,6 +578,12 @@ The Prometheus middleware automatically collects:
 #### Advanced Configuration
 
 ```javascript
+const {
+  createPrometheusMiddleware,
+  createMetricsHandler,
+  createPrometheusIntegration,
+} = require('0http-bun/lib/middleware')
+
 const prometheus = createPrometheusIntegration({
   // Control default Node.js metrics collection
   collectDefaultMetrics: true,
@@ -602,6 +618,12 @@ const prometheus = createPrometheusIntegration({
 #### Custom Business Metrics
 
 ```javascript
+const {
+  createPrometheusIntegration,
+} = require('0http-bun/lib/middleware')
+
+// Get the prometheus client from the integration
+const prometheus = createPrometheusIntegration()
 const {promClient} = prometheus
 
 // Create custom metrics
@@ -644,6 +666,8 @@ router.post('/orders', async (req) => {
 #### Metrics Endpoint Options
 
 ```javascript
+const {createMetricsHandler} = require('0http-bun/lib/middleware')
+
 // Custom metrics endpoint
 const metricsHandler = createMetricsHandler({
   endpoint: '/custom-metrics', // Default: '/metrics'
@@ -1029,8 +1053,8 @@ Apply middleware only to specific paths:
 
 ```typescript
 // API-only middleware
-router.use('/api/*', jwtAuth({secret: 'api-secret'}))
-router.use('/api/*', rateLimit({max: 1000}))
+router.use('/api/*', createJWTAuth({secret: 'api-secret'}))
+router.use('/api/*', createRateLimit({max: 1000}))
 
 // Admin-only middleware
 router.use('/admin/*', adminAuthMiddleware)
