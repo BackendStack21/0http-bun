@@ -10,6 +10,7 @@
   - [CORS](#cors)
   - [JWT Authentication](#jwt-authentication)
   - [Logger](#logger)
+  - [Prometheus Metrics](#prometheus-metrics)
   - [Rate Limiting](#rate-limiting)
 - [Creating Custom Middleware](#creating-custom-middleware)
 
@@ -50,6 +51,7 @@ import {
   createLogger,
   createJWTAuth,
   createRateLimit,
+  createPrometheusIntegration,
 } from '0http-bun/lib/middleware'
 ```
 
@@ -502,6 +504,202 @@ router.use(createLogger(loggerOptions))
 - `short` - Shorter than common, includes response time
 - `tiny` - Minimal output
 - `dev` - Development-friendly colored output
+
+### Prometheus Metrics
+
+Comprehensive Prometheus metrics integration for monitoring and observability with built-in security and performance optimizations.
+
+```javascript
+import {createPrometheusIntegration} from '0http-bun/lib/middleware/prometheus'
+
+// Simple setup with default metrics
+const prometheus = createPrometheusIntegration()
+
+router.use(prometheus.middleware)
+router.get('/metrics', prometheus.metricsHandler)
+```
+
+#### Default Metrics Collected
+
+The Prometheus middleware automatically collects:
+
+- **HTTP Request Duration** - Histogram of request durations in seconds (buckets: 0.001, 0.005, 0.015, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 5, 10)
+- **HTTP Request Count** - Counter of total requests by method, route, and status
+- **HTTP Request Size** - Histogram of request body sizes (buckets: 1B, 10B, 100B, 1KB, 10KB, 100KB, 1MB, 10MB)
+- **HTTP Response Size** - Histogram of response body sizes (buckets: 1B, 10B, 100B, 1KB, 10KB, 100KB, 1MB, 10MB)
+- **Active Connections** - Gauge of currently active HTTP connections
+- **Node.js Metrics** - Memory usage, CPU, garbage collection (custom buckets), event loop lag (5ms precision)
+
+#### Advanced Configuration
+
+```javascript
+const prometheus = createPrometheusIntegration({
+  // Control default Node.js metrics collection
+  collectDefaultMetrics: true,
+
+  // Exclude paths from metrics collection (optimized for performance)
+  excludePaths: ['/health', '/ping', '/favicon.ico'],
+
+  // Skip certain HTTP methods
+  skipMethods: ['OPTIONS'],
+
+  // Custom route normalization with security controls
+  normalizeRoute: (req) => {
+    const url = new URL(req.url, 'http://localhost')
+    return url.pathname
+      .replace(/\/users\/\d+/, '/users/:id')
+      .replace(/\/api\/v\d+/, '/api/:version')
+  },
+
+  // Add custom labels with automatic sanitization
+  extractLabels: (req, response) => {
+    return {
+      user_type: req.headers.get('x-user-type') || 'anonymous',
+      api_version: req.headers.get('x-api-version') || 'v1',
+    }
+  },
+
+  // Use custom metrics object instead of default metrics
+  metrics: customMetricsObject,
+})
+```
+
+#### Custom Business Metrics
+
+```javascript
+const {promClient} = prometheus
+
+// Create custom metrics
+const orderCounter = new promClient.Counter({
+  name: 'orders_total',
+  help: 'Total number of orders processed',
+  labelNames: ['status', 'payment_method'],
+})
+
+const orderValue = new promClient.Histogram({
+  name: 'order_value_dollars',
+  help: 'Value of orders in dollars',
+  labelNames: ['payment_method'],
+  buckets: [10, 50, 100, 500, 1000, 5000],
+})
+
+// Use in your routes
+router.post('/orders', async (req) => {
+  const order = await processOrder(req.body)
+
+  // Record custom metrics
+  orderCounter.inc({
+    status: order.status,
+    payment_method: order.payment_method,
+  })
+
+  if (order.status === 'completed') {
+    orderValue.observe(
+      {
+        payment_method: order.payment_method,
+      },
+      order.amount,
+    )
+  }
+
+  return Response.json(order)
+})
+```
+
+#### Metrics Endpoint Options
+
+```javascript
+// Custom metrics endpoint
+const metricsHandler = createMetricsHandler({
+  endpoint: '/custom-metrics', // Default: '/metrics'
+  registry: customRegistry, // Default: promClient.register
+})
+
+router.get('/custom-metrics', metricsHandler)
+```
+
+#### Route Normalization & Security
+
+The middleware automatically normalizes routes and implements security measures to prevent high cardinality and potential attacks:
+
+```javascript
+// URLs like these:
+// /users/123, /users/456, /users/789
+// Are normalized to: /users/:id
+
+// /products/abc-123, /products/def-456
+// Are normalized to: /products/:slug
+
+// /api/v1/data, /api/v2/data
+// Are normalized to: /api/:version/data
+
+// Route sanitization examples:
+// /users/:id → _users__id (special characters replaced with underscores)
+// /api/v1/orders → _api_v1_orders
+// Very long tokens → _api__token (pattern-based normalization)
+```
+
+**Route Sanitization:**
+
+- Special characters (`/`, `:`, etc.) are replaced with underscores (`_`) for Prometheus compatibility
+- UUIDs are automatically normalized to `:id` patterns
+- Long tokens (>20 characters) are normalized to `:token` patterns
+- Numeric IDs are normalized to `:id` patterns
+- Route complexity is limited to 10 segments maximum
+
+**Security Features:**
+
+- **Label Sanitization**: Removes potentially dangerous characters from metric labels and truncates values to 100 characters
+- **Cardinality Limits**: Prevents memory exhaustion from too many unique metric combinations
+- **Route Complexity Limits**: Caps the number of route segments to 10 to prevent DoS attacks
+- **Size Limits**: Limits request/response body size processing (up to 100MB) to prevent memory issues
+- **Header Processing Limits**: Caps the number of headers processed per request (50 for requests, 20 for responses)
+- **URL Processing**: Handles both full URLs and pathname-only URLs with proper fallback handling
+
+#### Performance Optimizations
+
+- **Fast Path for Excluded Routes**: Bypasses all metric collection for excluded paths with smart URL parsing
+- **Lazy Evaluation**: Only processes metrics when actually needed
+- **Efficient Size Calculation**: Optimized request/response size measurement with capping at 1MB estimation
+- **Error Handling**: Graceful handling of malformed URLs and invalid data with fallback mechanisms
+- **Header Count Limits**: Prevents excessive header processing overhead (50 request headers, 20 response headers)
+- **Smart URL Parsing**: Handles both full URLs and pathname-only URLs efficiently
+
+#### Production Considerations
+
+- **Performance**: Adds <1ms overhead per request with optimized fast paths
+- **Memory**: Metrics stored in memory with cardinality controls; use recording rules for high cardinality
+- **Security**: Built-in protections against label injection and cardinality bombs
+- **Cardinality**: Automatic limits prevent high cardinality issues
+- **Monitoring**: Consider protecting `/metrics` endpoint in production
+
+#### Integration with Monitoring
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: '0http-bun-app'
+    static_configs:
+      - targets: ['localhost:3000']
+    scrape_interval: 15s
+    metrics_path: /metrics
+```
+
+#### Troubleshooting
+
+**Common Issues:**
+
+- **High Memory Usage**: Check for high cardinality metrics. Route patterns should be normalized (e.g., `/users/:id` not `/users/12345`)
+- **Missing Metrics**: Ensure paths aren't in `excludePaths` and HTTP methods aren't in `skipMethods`
+- **Route Sanitization**: Routes are automatically sanitized (special characters become underscores: `/users/:id` → `_users__id`)
+- **URL Parsing Errors**: The middleware handles both full URLs and pathname-only URLs with graceful fallback
+
+**Performance Tips:**
+
+- Use `excludePaths` for health checks and static assets
+- Consider using `skipMethods` for OPTIONS requests
+- Monitor memory usage in production for metric cardinality
+- Use Prometheus recording rules for high-cardinality aggregations
 
 ### Rate Limiting
 
