@@ -2,6 +2,30 @@
 
 0http-bun provides a comprehensive middleware system with built-in middlewares for common use cases. All middleware functions are TypeScript-ready and follow the standard middleware pattern.
 
+## Dependency Installation
+
+⚠️ **Important**: Starting with v1.2.2, middleware dependencies are now **optional** and must be installed separately when needed. This reduces the framework's footprint and improves startup performance through lazy loading.
+
+Install only the dependencies you need:
+
+```bash
+# For JWT Authentication middleware
+npm install jose
+
+# For Logger middleware
+npm install pino
+
+# For Prometheus Metrics middleware
+npm install prom-client
+```
+
+**Benefits of Lazy Loading:**
+
+- 📦 **Smaller Bundle**: Only install what you use
+- ⚡ **Faster Startup**: Dependencies loaded only when middleware is used
+- 💾 **Lower Memory**: Reduced initial memory footprint
+- 🔧 **Better Control**: Explicit dependency management
+
 ## Table of Contents
 
 - [Middleware Pattern](#middleware-pattern)
@@ -96,6 +120,8 @@ import type {
 
 Automatically parses request bodies based on Content-Type header.
 
+> ✅ **No additional dependencies required** - Uses Bun's built-in parsing capabilities.
+
 ```javascript
 const {createBodyParser} = require('0http-bun/lib/middleware')
 
@@ -143,6 +169,8 @@ router.use(createBodyParser(bodyParserOptions))
 ### CORS
 
 Cross-Origin Resource Sharing middleware with flexible configuration.
+
+> ✅ **No additional dependencies required** - Built-in CORS implementation.
 
 ```javascript
 const {createCORS} = require('0http-bun/lib/middleware')
@@ -195,6 +223,8 @@ router.use(createCORS(corsOptions))
 ### JWT Authentication
 
 JSON Web Token authentication and authorization middleware with support for static secrets, JWKS endpoints, and API key authentication.
+
+> 📦 **Required dependency**: `npm install jose`
 
 #### Basic JWT with Static Secret
 
@@ -447,6 +477,9 @@ router.get('/api/profile', (req) => {
 
 Request logging middleware with customizable output formats.
 
+> 📦 **Required dependency for structured logging**: `npm install pino`  
+> ✅ **Simple logger** (`simpleLogger`) has no dependencies - uses `console.log`
+
 ```javascript
 const {createLogger, simpleLogger} = require('0http-bun/lib/middleware')
 
@@ -508,6 +541,8 @@ router.use(createLogger(loggerOptions))
 ### Prometheus Metrics
 
 Comprehensive Prometheus metrics integration for monitoring and observability with built-in security and performance optimizations.
+
+> 📦 **Required dependency**: `npm install prom-client`
 
 ```javascript
 import {createPrometheusIntegration} from '0http-bun/lib/middleware/prometheus'
@@ -704,6 +739,8 @@ scrape_configs:
 ### Rate Limiting
 
 Configurable rate limiting middleware with multiple store options.
+
+> ✅ **No additional dependencies required** - Uses built-in memory store.
 
 ```javascript
 const {createRateLimit, MemoryStore} = require('0http-bun/lib/middleware')
@@ -1063,6 +1100,26 @@ router.use(
 // Routes
 router.get('/api/public/status', () => Response.json({status: 'ok'}))
 router.get('/api/protected/data', (req) => Response.json({user: req.user}))
+```
+
+## Dependency Summary
+
+For your convenience, here's a quick reference of which dependencies you need to install for each middleware:
+
+| Middleware              | Dependencies Required | Install Command           |
+| ----------------------- | --------------------- | ------------------------- |
+| **Body Parser**         | ✅ None               | Built-in                  |
+| **CORS**                | ✅ None               | Built-in                  |
+| **Rate Limiting**       | ✅ None               | Built-in                  |
+| **Logger** (simple)     | ✅ None               | Built-in                  |
+| **Logger** (structured) | 📦 `pino`             | `npm install pino`        |
+| **JWT Authentication**  | 📦 `jose`             | `npm install jose`        |
+| **Prometheus Metrics**  | 📦 `prom-client`      | `npm install prom-client` |
+
+**Install all optional dependencies at once:**
+
+```bash
+npm install pino jose prom-client
 ```
 
 This middleware stack provides a solid foundation for most web applications with security, logging, and performance features built-in.

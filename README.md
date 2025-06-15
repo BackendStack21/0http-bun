@@ -206,11 +206,14 @@ Bun.serve({
 
 0http-bun includes a comprehensive middleware system with built-in middlewares for common use cases:
 
+> 📦 **Note**: Starting with v1.2.2, some middleware dependencies are optional. Install only what you need: `jose` (JWT), `pino` (Logger), `prom-client` (Prometheus).
+
 - **[Body Parser](./lib/middleware/README.md#body-parser)** - Automatic request body parsing (JSON, form data, text)
 - **[CORS](./lib/middleware/README.md#cors)** - Cross-Origin Resource Sharing with flexible configuration
 - **[JWT Authentication](./lib/middleware/README.md#jwt-authentication)** - JSON Web Token authentication and authorization
 - **[Logger](./lib/middleware/README.md#logger)** - Request logging with multiple output formats
 - **[Rate Limiting](./lib/middleware/README.md#rate-limiting)** - Flexible rate limiting with sliding window support
+- **[Prometheus Metrics](./lib/middleware/README.md#prometheus-metrics)** - Export metrics for monitoring and alerting
 
 ### Quick Example
 
