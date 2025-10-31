@@ -1,6 +1,11 @@
 # 0http-bun
 
+[![npm version](https://img.shields.io/npm/v/0http-bun?style=flat-square)](https://www.npmjs.com/package/0http-bun)
+[![license](https://img.shields.io/npm/l/0http-bun?style=flat-square)](https://github.com/BackendStack21/0http-bun/blob/main/LICENSE)
+
 A high-performance, minimalist HTTP framework for [Bun](https://bun.sh/), inspired by [0http](https://0http.21no.de/#/). Built specifically to leverage Bun's native performance capabilities with a developer-friendly API.
+
+> Landing page: [0http-bun.21no.de](https://0http-bun.21no.de)
 
 ## Key Benefits
 

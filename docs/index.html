@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="0http-bun - A high-performance, minimalist HTTP framework for Bun"
+    />
+    <meta
+      name="keywords"
+      content="bun, http, framework, performance, typescript, minimalist"
+    />
+    <meta name="theme-color" content="#1f2937" />
+    <meta
+      property="og:title"
+      content="0http-bun - High-Performance HTTP Framework for Bun"
+    />
+    <meta
+      property="og:description"
+      content="Build blazing-fast HTTP services with Bun's native performance"
+    />
+    <meta property="og:type" content="website" />
+    <title>0http-bun - High-Performance HTTP Framework for Bun</title>
+
+    <!-- Google Fonts - Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <header>
+      <div class="container">
+        <div class="hero-badge">Powered by Bun's Native Performance</div>
+        <h1 class="logo">0http-bun</h1>
+        <p class="tagline">
+          The fastest way to build HTTP services with Bun. Zero config, maximum
+          performance.
+        </p>
+        <ul class="hero-meta">
+          <li>⚡ Sub-millisecond routing</li>
+          <li>🔒 Built-in JWT & CORS</li>
+          <li>📊 Prometheus metrics</li>
+          <li>🎯 TypeScript-first</li>
+        </ul>
+        <div class="header-buttons">
+          <a
+            href="https://github.com/BackendStack21/0http-bun"
+            class="btn btn-primary"
+            >View on GitHub</a
+          >
+          <a href="#quickstart" class="btn btn-secondary">Get Started</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+      <div class="container">
+        <h2 class="section-title">Why Choose 0http-bun?</h2>
+        <p class="section-subtitle">
+          Built for developers who demand performance without sacrificing
+          developer experience
+        </p>
+        <div class="features-grid">
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🚀</div>
+            <h3 class="feature-title">Bun-Native Performance</h3>
+            <p class="feature-description">
+              Optimized specifically for Bun's runtime with minimal overhead.
+              Direct use of Web APIs and efficient routing based on the proven
+              trouter library delivers sub-millisecond request handling.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🔧</div>
+            <h3 class="feature-title">TypeScript First</h3>
+            <p class="feature-description">
+              Full TypeScript support with comprehensive type definitions for
+              all APIs. Enjoy excellent IDE autocomplete, type safety, and
+              inline documentation as you build.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🎯</div>
+            <h3 class="feature-title">Minimalist API</h3>
+            <p class="feature-description">
+              Clean, intuitive API inspired by Express but built for modern
+              runtimes. Get started in seconds without sacrificing power,
+              flexibility, or performance.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🔄</div>
+            <h3 class="feature-title">Rich Middleware Ecosystem</h3>
+            <p class="feature-description">
+              Flexible async/await middleware system. Built-in support for CORS,
+              JWT auth, rate limiting, body parsing, Prometheus metrics, and
+              structured logging. Optional dependencies keep your bundle lean.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">📦</div>
+            <h3 class="feature-title">Tiny Footprint</h3>
+            <p class="feature-description">
+              Lightweight framework with minimal dependencies and intelligent
+              caching. Memory-efficient design with route caching and object
+              reuse to minimize allocations and maximize throughput.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🛡️</div>
+            <h3 class="feature-title">Web Standards Built-in</h3>
+            <p class="feature-description">
+              Built entirely on standard Web APIs (Request/Response). Write
+              portable code that works across Bun, Deno, Cloudflare Workers, and
+              other modern runtimes. No vendor lock-in.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Code Example Section -->
+    <section class="code-section" id="quickstart">
+      <div class="container">
+        <h2 class="section-title">Get Started in Seconds</h2>
+        <p class="section-subtitle">
+          Production-ready HTTP server with full TypeScript support and
+          middleware
+        </p>
+        <div class="code-container">
+          <div class="code-wrapper">
+            <div class="code-header">
+              <div class="code-dots">
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+              </div>
+              <span class="code-title">server.ts</span>
+            </div>
+            <pre
+              class="code-block"
+            ><code><span class="code-comment">// Install: bun add 0http-bun</span>
+<span class="code-keyword">import</span> http, { ZeroRequest, StepFunction } <span class="code-keyword">from</span> <span class="code-string">'0http-bun'</span>
+<span class="code-keyword">import</span> { createCORS, createLogger, createRateLimit } <span class="code-keyword">from</span> <span class="code-string">'0http-bun/lib/middleware'</span>
+
+<span class="code-comment">// Create router with error handling</span>
+<span class="code-keyword">const</span> {router} = <span class="code-function">http</span>({
+  errorHandler: (err: Error) => Response.<span class="code-function">json</span>({error: err.message}, {status: <span class="code-number">500</span>})
+})
+
+<span class="code-comment">// Apply middleware stack</span>
+router.<span class="code-function">use</span>(<span class="code-function">createCORS</span>())          <span class="code-comment">// CORS support</span>
+router.<span class="code-function">use</span>(<span class="code-function">createLogger</span>())        <span class="code-comment">// Request logging</span>
+router.<span class="code-function">use</span>(<span class="code-function">createRateLimit</span>({max: <span class="code-number">100</span>}))  <span class="code-comment">// Rate limiting</span>
+
+<span class="code-comment">// Define routes with full type safety</span>
+router.<span class="code-function">get</span>(<span class="code-string">'/api/users/:id'</span>, <span class="code-keyword">async</span> (req: ZeroRequest) => {
+  <span class="code-keyword">return</span> Response.<span class="code-function">json</span>({ 
+    id: req.params.id,
+    name: <span class="code-string">'John Doe'</span>
+  })
+})
+
+router.<span class="code-function">post</span>(<span class="code-string">'/api/users'</span>, <span class="code-keyword">async</span> (req: ZeroRequest) => {
+  <span class="code-keyword">const</span> body = <span class="code-keyword">await</span> req.<span class="code-function">json</span>()
+  <span class="code-keyword">return</span> Response.<span class="code-function">json</span>({created: <span class="code-keyword">true</span>, data: body}, {status: <span class="code-number">201</span>})
+})
+
+<span class="code-comment">// Start server</span>
+Bun.<span class="code-function">serve</span>({ port: <span class="code-number">3000</span>, fetch: router.fetch })</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Middleware Section -->
+    <section class="features" style="background: var(--bg)">
+      <div class="container">
+        <h2 class="section-title">Comprehensive Middleware Suite</h2>
+        <p class="section-subtitle">
+          Production-ready middleware for common use cases. Install only what
+          you need.
+        </p>
+        <div class="features-grid">
+          <div class="feature-card fade-in">
+            <div class="feature-icon">📝</div>
+            <h3 class="feature-title">Body Parser</h3>
+            <p class="feature-description">
+              Automatic parsing of JSON, form data, and text payloads with
+              configurable size limits and error handling.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🌐</div>
+            <h3 class="feature-title">CORS</h3>
+            <p class="feature-description">
+              Flexible Cross-Origin Resource Sharing with support for
+              credentials, custom headers, and preflight caching.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">🔐</div>
+            <h3 class="feature-title">JWT Authentication</h3>
+            <p class="feature-description">
+              Secure JSON Web Token authentication with role-based
+              authorization, token validation, and custom claims support.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">📊</div>
+            <h3 class="feature-title">Prometheus Metrics</h3>
+            <p class="feature-description">
+              Export HTTP metrics for monitoring and alerting. Track request
+              rates, latencies, and error rates out of the box.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">⏱️</div>
+            <h3 class="feature-title">Rate Limiting</h3>
+            <p class="feature-description">
+              Flexible rate limiting with sliding window support. Protect your
+              APIs from abuse with customizable limits per IP or key.
+            </p>
+          </div>
+
+          <div class="feature-card fade-in">
+            <div class="feature-icon">📋</div>
+            <h3 class="feature-title">Logger</h3>
+            <p class="feature-description">
+              Structured request logging with multiple output formats. Built on
+              Pino for high-performance logging in production.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+      <div class="container">
+        <h2 class="section-title">Built for Modern Web</h2>
+        <p class="section-subtitle">
+          Leveraging Bun's speed with developer-friendly APIs
+        </p>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-number">⚡</div>
+            <div class="stat-label">Sub-ms Routing</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">🎯</div>
+            <div class="stat-label">Zero Config</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">💯</div>
+            <div class="stat-label">100% TypeScript</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">🌐</div>
+            <div class="stat-label">Web Standards</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+      <div class="container">
+        <h2 class="cta-title">Ready to Get Started?</h2>
+        <p class="cta-subtitle">
+          Build high-performance HTTP services with Bun today
+        </p>
+        <a
+          href="https://github.com/BackendStack21/0http-bun/blob/main/README.md"
+          class="btn btn-accent"
+          >Read the Documentation</a
+        >
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <p>
+          &copy; 2025
+          <a href="https://21no.de" target="_blank" rel="noopener noreferrer"
+            >21no.de</a
+          >
+          <br />
+          Open source under the MIT License.
+        </p>
+        <div class="footer-links">
+          <a
+            href="https://github.com/BackendStack21/0http-bun"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub</a
+          >
+          <a
+            href="https://github.com/BackendStack21/0http-bun/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Report Issues</a
+          >
+          <a
+            href="https://www.npmjs.com/package/0http-bun"
+            target="_blank"
+            rel="noopener noreferrer"
+            >npm</a
+          >
+        </div>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+  </body>
+</html>
