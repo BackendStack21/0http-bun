@@ -2,6 +2,7 @@ import {Pattern, Methods} from 'trouter'
 import {Logger} from 'pino'
 
 export interface IRouterConfig {
+  cacheSize?: number
   defaultRoute?: RequestHandler
   errorHandler?: (err: Error) => Response | Promise<Response>
   port?: number
