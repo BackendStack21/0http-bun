@@ -73,6 +73,32 @@ Bun.serve({
 })
 ```
 
+### Enabling Client IP for Rate Limiting
+
+Bun's standard `Request` object does not expose the client IP address. To enable the default rate limiter key generator (and any middleware that reads `req.ip`), use `server.requestIP()` in the `Bun.serve` fetch handler:
+
+```typescript
+import http from '0http-bun'
+import {createRateLimit} from '0http-bun/lib/middleware'
+
+const {router} = http()
+
+router.use(createRateLimit({windowMs: 15 * 60 * 1000, max: 100}))
+
+router.get('/', () => new Response('Hello World!'))
+
+// Populate req.ip from Bun's server.requestIP before passing to the router
+Bun.serve({
+  port: 3000,
+  fetch(req, server) {
+    req.ip = server.requestIP(req)?.address
+    return router.fetch(req)
+  },
+})
+```
+
+> **Why is this needed?** The Fetch API `Request` type does not include connection-level properties like `ip`. Bun provides client IP via `server.requestIP(req)` in the fetch handler's second argument. Setting `req.ip` before calling `router.fetch` ensures the rate limiter (and other middleware) can identify clients correctly. Without this, the default key generator falls back to unique per-request keys, which effectively disables rate limiting.
+
 ### With TypeScript Types
 
 ```typescript
@@ -357,7 +383,7 @@ router.get('/api/risky', async (req: ZeroRequest) => {
 
 #### **Rate Limiting**
 
-- **Secure Key Generation**: Default key generator uses `req.ip || req.remoteAddress || 'unknown'` — proxy headers are **not trusted** by default
+- **Secure Key Generation**: Default key generator uses `req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown'` — proxy headers are **not trusted** by default
 - **No Store Injection**: Rate limit store is always the constructor-configured instance (no `req.rateLimitStore` override)
 - **Bounded Memory**: Sliding window rate limiter enforces `maxKeys` (default: 10,000) with periodic cleanup
 - **Synchronous Increment**: `MemoryStore.increment` is synchronous to eliminate TOCTOU race conditions
@@ -435,7 +461,8 @@ router.use(
       req: (req) => ({
         method: req.method,
         url: req.url,
-        ip: req.ip || req.remoteAddress || 'unknown',
+        ip:
+          req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown',
         userAgent: req.headers.get('user-agent'),
       }),
     },

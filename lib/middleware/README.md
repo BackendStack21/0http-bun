@@ -854,7 +854,7 @@ router.use(
     max: 20, // Max requests
     keyGenerator: (req) => {
       // Custom key generation
-      // Default uses: req.ip || req.remoteAddress || 'unknown'
+      // Default uses: req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown'
       // NOTE: Proxy headers are NOT trusted by default. If behind a
       // reverse proxy, you MUST provide a custom keyGenerator:
       return (
@@ -911,7 +911,7 @@ const rateLimitOptions: RateLimitOptions = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   keyGenerator: (req) => {
-    // Default: req.ip || req.remoteAddress || 'unknown'
+    // Default: req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown'
     // Custom: read from proxy-set header if behind a reverse proxy
     return (
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -952,7 +952,8 @@ router.use(
     windowMs: 60 * 1000, // 1 minute sliding window
     max: 10, // Max 10 requests per minute
     maxKeys: 10000, // Maximum tracked keys (default: 10000) — prevents unbounded memory growth
-    keyGenerator: (req) => req.ip || req.remoteAddress || 'unknown',
+    keyGenerator: (req) =>
+      req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown',
   }),
 )
 ```
@@ -1014,7 +1015,8 @@ router.use(
   createSlidingWindowRateLimit({
     windowMs: 3600 * 1000, // 1 hour
     max: 3, // 3 accounts per IP per hour
-    keyGenerator: (req) => req.ip || req.remoteAddress || 'unknown',
+    keyGenerator: (req) =>
+      req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown',
   }),
 )
 

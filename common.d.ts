@@ -20,6 +20,19 @@ export interface ParsedFile {
 export type ZeroRequest = Request & {
   params: Record<string, string>
   query: Record<string, string>
+  // Connection-level IP address (set via Bun.serve's server.requestIP or upstream middleware)
+  ip?: string
+  remoteAddress?: string
+  socket?: {
+    remoteAddress?: string
+  }
+  // Rate limit info (set by rate-limit middleware)
+  rateLimit?: {
+    limit: number
+    remaining: number
+    current: number
+    reset: Date
+  }
   // Legacy compatibility properties (mirrored from ctx)
   user?: any
   jwt?: {
@@ -43,6 +56,8 @@ export type ZeroRequest = Request & {
       used: number
       remaining: number
       resetTime: Date
+      current: number
+      reset: Date
     }
     body?: any
     files?: Record<string, ParsedFile | ParsedFile[]>

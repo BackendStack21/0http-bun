@@ -501,6 +501,38 @@ describe('Rate Limit Middleware', () => {
       expect(key).toBe('5.6.7.8')
     })
 
+    it('should use req.socket.remoteAddress as last IP fallback', () => {
+      const testReq = {
+        socket: {remoteAddress: '10.0.0.1'},
+        headers: new Headers([['x-forwarded-for', '13.14.15.16']]),
+      }
+
+      const key = defaultKeyGenerator(testReq)
+      expect(key).toBe('10.0.0.1')
+    })
+
+    it('should prefer req.ip over req.socket.remoteAddress', () => {
+      const testReq = {
+        ip: '1.2.3.4',
+        socket: {remoteAddress: '10.0.0.1'},
+        headers: new Headers(),
+      }
+
+      const key = defaultKeyGenerator(testReq)
+      expect(key).toBe('1.2.3.4')
+    })
+
+    it('should prefer req.remoteAddress over req.socket.remoteAddress', () => {
+      const testReq = {
+        remoteAddress: '5.6.7.8',
+        socket: {remoteAddress: '10.0.0.1'},
+        headers: new Headers(),
+      }
+
+      const key = defaultKeyGenerator(testReq)
+      expect(key).toBe('5.6.7.8')
+    })
+
     it('should not trust proxy headers by default', () => {
       const testReq = {
         headers: new Headers([['x-forwarded-for', '9.10.11.12, 13.14.15.16']]),
