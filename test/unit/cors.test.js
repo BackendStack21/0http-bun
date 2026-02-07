@@ -683,12 +683,48 @@ describe('CORS Middleware', () => {
 
       const middleware = cors({
         origin: false, // Explicitly set to false
+        credentials: true,
       })
 
       const response = await middleware(req, next)
 
       expect(response.status).toBe(204)
       expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
+      // Should not leak CORS policy headers to disallowed origins
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBeNull()
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBeNull()
+      expect(response.headers.get('Access-Control-Max-Age')).toBeNull()
+      expect(
+        response.headers.get('Access-Control-Allow-Credentials'),
+      ).toBeNull()
+      expect(next).not.toHaveBeenCalled()
+    })
+
+    it('should not leak CORS headers in preflight for rejected origins', async () => {
+      req = createTestRequest('OPTIONS', '/api/test')
+      req.headers = new Headers({
+        Origin: 'https://evil.com',
+        'Access-Control-Request-Method': 'POST',
+      })
+
+      const middleware = cors({
+        origin: ['https://trusted.com'],
+        credentials: true,
+        maxAge: 3600,
+        methods: ['GET', 'POST'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+      })
+
+      const response = await middleware(req, next)
+
+      expect(response.status).toBe(204)
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBeNull()
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBeNull()
+      expect(response.headers.get('Access-Control-Max-Age')).toBeNull()
+      expect(
+        response.headers.get('Access-Control-Allow-Credentials'),
+      ).toBeNull()
       expect(next).not.toHaveBeenCalled()
     })
 
