@@ -237,12 +237,17 @@ describe('Sequential Router Unit Tests', () => {
         throw new Error('Test error')
       })
 
+      const originalError = console.error
+      console.error = () => {}
+
       const response = await routerInstance.fetch(
         createTestRequest('GET', '/error'),
       )
 
+      console.error = originalError
+
       expect(response.status).toBe(500)
-      expect(await response.text()).toBe('Test error')
+      expect(await response.text()).toBe('Internal Server Error')
     })
 
     it('should use custom error handler', async () => {
@@ -269,22 +274,18 @@ describe('Sequential Router Unit Tests', () => {
         throw new Error('Async error')
       })
 
-      // Test that the router can handle the request, even if the handler throws
-      // The actual error handling behavior may vary based on the router implementation
-      try {
-        const response = await routerInstance.fetch(
-          createTestRequest('GET', '/async-error'),
-        )
+      const originalError = console.error
+      console.error = () => {}
 
-        // If the router handles the error, it should return a 500 response
-        if (response && response.status) {
-          expect(response.status).toBe(500)
-          expect(await response.text()).toBe('Async error')
-        }
-      } catch (error) {
-        // If the error is not caught by the router, verify it's the expected error
-        expect(error.message).toBe('Async error')
-      }
+      // Async errors are now caught by the router and handled by the error handler
+      const response = await routerInstance.fetch(
+        createTestRequest('GET', '/async-error'),
+      )
+
+      console.error = originalError
+
+      expect(response.status).toBe(500)
+      expect(await response.text()).toBe('Internal Server Error')
     })
   })
 

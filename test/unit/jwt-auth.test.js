@@ -152,8 +152,9 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
 
       expect(response.status).toBe(200)
-      expect(req.apiKey).toBe(validApiKey)
-      expect(req.user).toEqual({apiKey: validApiKey})
+      // M-7 fix: API key is now masked in req.apiKey and req.ctx.apiKey
+      expect(req.apiKey).toBe('test****-123')
+      expect(req.user).toEqual({apiKey: 'test****-123'})
       expect(next).toHaveBeenCalled()
     })
 
@@ -193,7 +194,7 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
 
       expect(response.status).toBe(200)
-      expect(customValidator).toHaveBeenCalledWith(customApiKey)
+      expect(customValidator).toHaveBeenCalledWith(customApiKey, req)
       expect(req.user).toEqual({userId: '123', role: 'user'})
       expect(next).toHaveBeenCalled()
     })
@@ -506,7 +507,7 @@ describe('JWT Authentication Middleware', () => {
 
       const response = await middleware(req, next)
       expect(response.status).toBe(200)
-      expect(singleParamValidator).toHaveBeenCalledWith(validApiKey)
+      expect(singleParamValidator).toHaveBeenCalledWith(validApiKey, req)
     })
 
     it('should handle validateApiKey function with two parameters', async () => {
@@ -779,7 +780,7 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(401)
       const errorData = await response.json()
-      expect(errorData.error).toBe('Token expired')
+      expect(errorData.error).toBe('Invalid or expired token')
     })
 
     it('should handle JWT with malformed token', async () => {
@@ -795,10 +796,8 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(401)
       const errorData = await response.json()
-      // This will trigger JWTInvalid error and get "Invalid token format" message
-      expect(['Invalid token format', 'Invalid token']).toContain(
-        errorData.error,
-      )
+      // All JWT errors now return a uniform message to prevent validation oracle
+      expect(errorData.error).toBe('Invalid or expired token')
     })
 
     it('should handle audience validation error', async () => {
@@ -822,10 +821,8 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(401)
       const errorData = await response.json()
-      // The error message will contain "audience" which triggers the specific handler
-      expect(['Invalid token audience', 'Invalid token']).toContain(
-        errorData.error,
-      )
+      // All JWT errors now return a uniform message to prevent validation oracle
+      expect(errorData.error).toBe('Invalid or expired token')
     })
 
     it('should handle issuer validation error', async () => {
@@ -849,10 +846,8 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(401)
       const errorData = await response.json()
-      // The error message will contain "issuer" which triggers the specific handler
-      expect(['Invalid token issuer', 'Invalid token']).toContain(
-        errorData.error,
-      )
+      // All JWT errors now return a uniform message to prevent validation oracle
+      expect(errorData.error).toBe('Invalid or expired token')
     })
   })
 
@@ -940,7 +935,7 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(401)
       const errorData = await response.json()
-      expect(errorData.error).toBe('Token signature verification failed')
+      expect(errorData.error).toBe('Invalid or expired token')
     })
 
     it('should handle JWTInvalid error type', async () => {
@@ -956,10 +951,8 @@ describe('JWT Authentication Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(401)
       const errorData = await response.json()
-      // Should get either "Invalid token format" or "Invalid token"
-      expect(['Invalid token format', 'Invalid token']).toContain(
-        errorData.error,
-      )
+      // All JWT errors now return a uniform message to prevent validation oracle
+      expect(errorData.error).toBe('Invalid or expired token')
     })
   })
 })
@@ -1075,7 +1068,8 @@ describe('API Key Authentication Middleware (createAPIKeyAuth)', () => {
 
       const response = await middleware(req, next)
       expect(response.status).toBe(200)
-      expect(req.ctx.apiKey).toBe('valid-key-2')
+      // M-7 fix: API key is now masked
+      expect(req.ctx.apiKey).toBe('vali****ey-2')
     })
 
     it('should validate single API key string', async () => {
@@ -1224,7 +1218,7 @@ describe('Final Coverage Tests for Remaining Lines', () => {
     const response = await middleware(req, next)
     expect(response.status).toBe(401)
     const errorData = await response.json()
-    expect(errorData.error).toBe('Invalid token')
+    expect(errorData.error).toBe('Invalid or expired token')
     expect(throwingUnauthorizedResponse).toHaveBeenCalled()
   })
 
@@ -1247,7 +1241,7 @@ describe('Final Coverage Tests for Remaining Lines', () => {
     const response = await middleware(req, next)
     expect(response.status).toBe(401)
     const errorData = await response.json()
-    expect(errorData.error).toBe('Invalid token audience')
+    expect(errorData.error).toBe('Invalid or expired token')
   })
 
   it('should handle JWT issuer validation error (line 314)', async () => {
@@ -1269,6 +1263,124 @@ describe('Final Coverage Tests for Remaining Lines', () => {
     const response = await middleware(req, next)
     expect(response.status).toBe(401)
     const errorData = await response.json()
-    expect(errorData.error).toBe('Invalid token issuer')
+    expect(errorData.error).toBe('Invalid or expired token')
+  })
+})
+
+describe('JWT Token Type Validation (L-4)', () => {
+  const {jwtAuth} = require('../../lib/middleware')
+  const {createTestRequest} = require('../helpers')
+  const {SignJWT, importJWK} = require('jose')
+  let req, next, testKey
+
+  beforeEach(async () => {
+    req = createTestRequest('GET', '/protected')
+    next = jest.fn(() => new Response('Protected resource'))
+
+    testKey = await importJWK({
+      kty: 'oct',
+      k: 'AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow',
+    })
+  })
+
+  it('should accept token with correct typ header', async () => {
+    const jwt = await new SignJWT({sub: 'user123'})
+      .setProtectedHeader({alg: 'HS256', typ: 'JWT'})
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(testKey)
+
+    req.headers = new Headers({Authorization: `Bearer ${jwt}`})
+
+    const middleware = jwtAuth({
+      secret: testKey,
+      algorithms: ['HS256'],
+      requiredTokenType: 'JWT',
+    })
+
+    const response = await middleware(req, next)
+    expect(response.status).toBe(200)
+    expect(next).toHaveBeenCalled()
+  })
+
+  it('should reject token with wrong typ header', async () => {
+    const jwt = await new SignJWT({sub: 'user123'})
+      .setProtectedHeader({alg: 'HS256', typ: 'at+jwt'})
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(testKey)
+
+    req.headers = new Headers({Authorization: `Bearer ${jwt}`})
+
+    const middleware = jwtAuth({
+      secret: testKey,
+      algorithms: ['HS256'],
+      requiredTokenType: 'JWT',
+    })
+
+    const response = await middleware(req, next)
+    expect(response.status).toBe(401)
+    const errorData = await response.json()
+    expect(errorData.error).toBe('Invalid token type')
+  })
+
+  it('should reject token with missing typ header when required', async () => {
+    const jwt = await new SignJWT({sub: 'user123'})
+      .setProtectedHeader({alg: 'HS256'})
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(testKey)
+
+    req.headers = new Headers({Authorization: `Bearer ${jwt}`})
+
+    const middleware = jwtAuth({
+      secret: testKey,
+      algorithms: ['HS256'],
+      requiredTokenType: 'JWT',
+    })
+
+    const response = await middleware(req, next)
+    expect(response.status).toBe(401)
+    const errorData = await response.json()
+    expect(errorData.error).toBe('Invalid token type')
+  })
+
+  it('should perform case-insensitive typ comparison', async () => {
+    const jwt = await new SignJWT({sub: 'user123'})
+      .setProtectedHeader({alg: 'HS256', typ: 'jwt'})
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(testKey)
+
+    req.headers = new Headers({Authorization: `Bearer ${jwt}`})
+
+    const middleware = jwtAuth({
+      secret: testKey,
+      algorithms: ['HS256'],
+      requiredTokenType: 'JWT',
+    })
+
+    const response = await middleware(req, next)
+    expect(response.status).toBe(200)
+    expect(next).toHaveBeenCalled()
+  })
+
+  it('should skip typ validation when requiredTokenType not set', async () => {
+    const jwt = await new SignJWT({sub: 'user123'})
+      .setProtectedHeader({alg: 'HS256'})
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(testKey)
+
+    req.headers = new Headers({Authorization: `Bearer ${jwt}`})
+
+    const middleware = jwtAuth({
+      secret: testKey,
+      algorithms: ['HS256'],
+    })
+
+    const response = await middleware(req, next)
+    expect(response.status).toBe(200)
+    expect(next).toHaveBeenCalled()
   })
 })

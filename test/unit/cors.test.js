@@ -667,7 +667,10 @@ describe('CORS Middleware', () => {
 
       expect(response.status).toBe(204)
       expect(headersFunction).toHaveBeenCalledWith(req)
-      expect(response.headers.get('Access-Control-Allow-Headers')).toBe('')
+      // I-2: string return values are now correctly handled as single-element arrays
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
+        'Content-Type',
+      )
       expect(next).not.toHaveBeenCalled()
     })
 
@@ -698,6 +701,51 @@ describe('CORS Middleware', () => {
 
       expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
         'Content-Type, Authorization',
+      )
+    })
+  })
+
+  describe('Preflight allowedHeaders Function Caching (I-2)', () => {
+    it('should call allowedHeaders function only once during preflight', async () => {
+      req = createTestRequest('OPTIONS', '/api/test')
+      req.headers = new Headers({
+        Origin: 'https://example.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type',
+      })
+
+      const headersFunction = jest.fn(() => ['Content-Type', 'Authorization'])
+
+      const middleware = cors({
+        origin: 'https://example.com',
+        allowedHeaders: headersFunction,
+      })
+
+      const response = await middleware(req, next)
+
+      expect(response.status).toBe(204)
+      // I-2: should be called exactly once, not 3 times
+      expect(headersFunction).toHaveBeenCalledTimes(1)
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
+        'Content-Type, Authorization',
+      )
+    })
+
+    it('should still call allowedHeaders function for non-preflight requests', async () => {
+      req.headers = new Headers({Origin: 'https://example.com'})
+
+      const headersFunction = jest.fn(() => ['Content-Type'])
+
+      const middleware = cors({
+        origin: 'https://example.com',
+        allowedHeaders: headersFunction,
+      })
+
+      const response = await middleware(req, next)
+
+      expect(headersFunction).toHaveBeenCalledTimes(1)
+      expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
+        'Content-Type',
       )
     })
   })

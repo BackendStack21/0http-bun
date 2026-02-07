@@ -395,7 +395,7 @@ describe('Body Parser Middleware', () => {
       const middleware = bodyParser()
       await middleware(req, next)
 
-      expect(req.body).toEqual({})
+      expect(req.body).toBeUndefined()
       expect(next).toHaveBeenCalled()
     })
 
@@ -899,8 +899,8 @@ describe('Body Parser Middleware', () => {
     })
 
     it('should handle non-string, non-number limit values', () => {
-      expect(parseLimit(null)).toBe(1024 * 1024) // Default 1MB
-      expect(parseLimit(undefined)).toBe(1024 * 1024) // Default 1MB
+      expect(() => parseLimit(null)).toThrow(TypeError)
+      expect(() => parseLimit(undefined)).toThrow(TypeError)
     })
 
     it('should handle custom JSON parser in main body parser', async () => {
@@ -1261,9 +1261,9 @@ describe('Body Parser Middleware', () => {
 
       const {createTextParser} = require('../../lib/middleware/body-parser')
       const middleware = createTextParser()
-      await expect(middleware(mockReq, () => {})).rejects.toThrow(
-        'Text parsing failed',
-      )
+      const response = await middleware(mockReq, () => {})
+      expect(response.status).toBe(400)
+      expect(await response.text()).toBe('Failed to read request body')
     })
 
     test('should handle invalid content-length in URL-encoded parser', async () => {
@@ -1322,9 +1322,9 @@ describe('Body Parser Middleware', () => {
         createURLEncodedParser,
       } = require('../../lib/middleware/body-parser')
       const middleware = createURLEncodedParser()
-      await expect(middleware(mockReq, () => {})).rejects.toThrow(
-        'URL-encoded parsing failed',
-      )
+      const response = await middleware(mockReq, () => {})
+      expect(response.status).toBe(400)
+      expect(await response.text()).toBe('Failed to read request body')
     })
 
     test('should handle invalid content-length in multipart parser', async () => {
@@ -1607,9 +1607,9 @@ describe('Body Parser Middleware', () => {
 
     const {createTextParser} = require('../../lib/middleware/body-parser')
     const middleware = createTextParser()
-    await expect(middleware(mockReq, () => {})).rejects.toThrow(
-      'Text reading failed',
-    )
+    const response = await middleware(mockReq, () => {})
+    expect(response.status).toBe(400)
+    expect(await response.text()).toBe('Failed to read request body')
   })
 
   test('should handle URL-encoded early return for non-matching content type (lines 360-361)', async () => {
@@ -1701,10 +1701,7 @@ describe('Body Parser Middleware', () => {
         // This might not be possible due to the restrictive regex
         expect(() => parseLimit('0.b')).toThrow('Invalid limit format')
       } catch (e) {
-        // If this doesn't work, the line might be unreachable
-        console.log(
-          'Line 40 may be mathematically unreachable due to regex constraints',
-        )
+        // Line 40 may be mathematically unreachable due to regex constraints
       }
     })
 
@@ -1720,7 +1717,6 @@ describe('Body Parser Middleware', () => {
           ['content-type', 'application/x-www-form-urlencoded'],
         ]),
         text: async () => 'simpleKey=simpleValue', // Simple key without brackets
-        _rawBodyText: 'simpleKey=simpleValue',
       }
 
       const urlEncodedParser = createURLEncodedParser({
@@ -1741,7 +1737,6 @@ describe('Body Parser Middleware', () => {
         method: 'POST',
         headers: new Map([['content-type', 'application/json']]),
         text: async () => '', // Empty string should be handled
-        _rawBodyText: '',
       }
 
       const jsonParser = createJSONParser()
@@ -1815,7 +1810,6 @@ describe('Body Parser Middleware', () => {
           ['content-length', bodyContent.length.toString()],
         ]),
         text: async () => bodyContent,
-        _rawBodyText: bodyContent,
       }
 
       const urlEncodedParser = createURLEncodedParser({limit: 500}) // Small limit
@@ -1868,5 +1862,69 @@ describe('Body Parser Middleware', () => {
       expect(result).toBeInstanceOf(Response)
       expect(result.status).toBe(413)
     })
+  })
+})
+
+describe('RAW_BODY_SYMBOL Security (L-3)', () => {
+  const {
+    createJSONParser,
+    createTextParser,
+    createURLEncodedParser,
+    RAW_BODY_SYMBOL,
+  } = require('../../lib/middleware/body-parser')
+  const {createTestRequest} = require('../helpers')
+
+  it('should export RAW_BODY_SYMBOL', () => {
+    expect(RAW_BODY_SYMBOL).toBeDefined()
+    expect(typeof RAW_BODY_SYMBOL).toBe('symbol')
+    expect(RAW_BODY_SYMBOL.toString()).toBe('Symbol(0http.rawBody)')
+  })
+
+  it('should store raw body via Symbol in JSON parser', async () => {
+    const req = createTestRequest('POST', '/api/data', {
+      headers: {'Content-Type': 'application/json'},
+      body: '{"key": "value"}',
+    })
+
+    const parser = createJSONParser()
+    const next = jest.fn()
+    await parser(req, next)
+
+    // Raw body should be accessible via Symbol
+    expect(req[RAW_BODY_SYMBOL]).toBe('{"key": "value"}')
+    // Raw body should NOT be accessible as a regular string property
+    expect(req._rawBodyText).toBeUndefined()
+  })
+
+  it('should store raw body via Symbol in text parser', async () => {
+    const req = createTestRequest('POST', '/api/data', {
+      headers: {'Content-Type': 'text/plain'},
+      body: 'hello world',
+    })
+
+    const parser = createTextParser()
+    const next = jest.fn()
+    await parser(req, next)
+
+    expect(req[RAW_BODY_SYMBOL]).toBe('hello world')
+    expect(req._rawBodyText).toBeUndefined()
+  })
+
+  it('should not expose raw body as enumerable property', async () => {
+    const req = createTestRequest('POST', '/api/data', {
+      headers: {'Content-Type': 'application/json'},
+      body: '{"secret": "password123"}',
+    })
+
+    const parser = createJSONParser()
+    const next = jest.fn()
+    await parser(req, next)
+
+    // Symbol-keyed properties should not appear in Object.keys
+    const keys = Object.keys(req)
+    expect(keys).not.toContain('_rawBodyText')
+    // The raw body should only be accessible via Symbol
+    expect(req._rawBodyText).toBeUndefined()
+    expect(req[RAW_BODY_SYMBOL]).toBe('{"secret": "password123"}')
   })
 })

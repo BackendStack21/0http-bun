@@ -96,11 +96,16 @@ describe('Router Configuration', () => {
         throw new Error('Test error')
       })
 
+      const originalError = console.error
+      console.error = () => {}
+
       const response = await router.fetch(
         new Request('http://localhost:3000/test-error', {
           method: 'GET',
         }),
       )
+
+      console.error = originalError
       expect(response.status).toBe(500)
     })
   })
