@@ -199,15 +199,14 @@ When using the `verify` option with `createBodyParser`, the raw body is availabl
 
 ```javascript
 const bodyParser = createBodyParser({
-  json: {
-    verify: (req, rawBody) => {
-      // rawBody is the raw string before parsing
-      const signature = req.headers.get('x-signature')
-      if (!verifySignature(rawBody, signature)) {
-        throw new Error('Invalid signature')
-      }
-    },
+  verify: (req, rawBody) => {
+    // rawBody is the raw string before parsing
+    const signature = req.headers.get('x-signature')
+    if (!verifySignature(rawBody, signature)) {
+      throw new Error('Invalid signature')
+    }
   },
+  // Note: any JSON parsing behavior (such as deferNext) is handled internally when verify is set.
 })
 ```
 
