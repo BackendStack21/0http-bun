@@ -8,6 +8,7 @@ describe('Rate Limit Middleware', () => {
 
   beforeEach(() => {
     req = createTestRequest('GET', '/api/test')
+    req.ip = '127.0.0.1'
     req.socket = {remoteAddress: '127.0.0.1'}
     next = jest.fn(() => new Response('Success'))
   })
@@ -273,6 +274,7 @@ describe('Rate Limit Middleware', () => {
       const promises = []
       for (let i = 0; i < 5; i++) {
         const newReq = createTestRequest('GET', '/api/test')
+        newReq.ip = '127.0.0.1'
         newReq.socket = {remoteAddress: '127.0.0.1'}
         promises.push(middleware(newReq, next))
       }
@@ -448,7 +450,7 @@ describe('Rate Limit Middleware', () => {
       expect(customStore.increment).toHaveBeenCalled()
     })
 
-    it('should use injected store from request', async () => {
+    it('should use constructor-injected store (not request-level injection)', async () => {
       const customStore = {
         increment: jest.fn().mockResolvedValue({
           totalHits: 1,
@@ -456,12 +458,11 @@ describe('Rate Limit Middleware', () => {
         }),
       }
 
-      // Inject store into request
-      req.rateLimitStore = customStore
-
+      // Use constructor-level dependency injection (secure approach)
       const middleware = rateLimit({
         windowMs: 60000,
         max: 5,
+        store: customStore,
       })
 
       await middleware(req, next)
@@ -473,12 +474,13 @@ describe('Rate Limit Middleware', () => {
   describe('Default Key Generator', () => {
     const {defaultKeyGenerator} = require('../../lib/middleware/rate-limit')
 
-    it('should use CF-Connecting-IP header when available', () => {
+    it('should use req.ip when available (connection-level IP)', () => {
       const testReq = {
+        ip: '1.2.3.4',
         headers: new Headers([
-          ['cf-connecting-ip', '1.2.3.4'],
-          ['x-real-ip', '5.6.7.8'],
-          ['x-forwarded-for', '9.10.11.12, 13.14.15.16'],
+          ['cf-connecting-ip', '5.6.7.8'],
+          ['x-real-ip', '9.10.11.12'],
+          ['x-forwarded-for', '13.14.15.16'],
         ]),
       }
 
@@ -486,11 +488,12 @@ describe('Rate Limit Middleware', () => {
       expect(key).toBe('1.2.3.4')
     })
 
-    it('should use X-Real-IP header when CF-Connecting-IP not available', () => {
+    it('should use req.remoteAddress when req.ip not available', () => {
       const testReq = {
+        remoteAddress: '5.6.7.8',
         headers: new Headers([
-          ['x-real-ip', '5.6.7.8'],
-          ['x-forwarded-for', '9.10.11.12, 13.14.15.16'],
+          ['x-real-ip', '9.10.11.12'],
+          ['x-forwarded-for', '13.14.15.16'],
         ]),
       }
 
@@ -498,22 +501,57 @@ describe('Rate Limit Middleware', () => {
       expect(key).toBe('5.6.7.8')
     })
 
-    it('should use first IP from X-Forwarded-For header', () => {
+    it('should use req.socket.remoteAddress as last IP fallback', () => {
+      const testReq = {
+        socket: {remoteAddress: '10.0.0.1'},
+        headers: new Headers([['x-forwarded-for', '13.14.15.16']]),
+      }
+
+      const key = defaultKeyGenerator(testReq)
+      expect(key).toBe('10.0.0.1')
+    })
+
+    it('should prefer req.ip over req.socket.remoteAddress', () => {
+      const testReq = {
+        ip: '1.2.3.4',
+        socket: {remoteAddress: '10.0.0.1'},
+        headers: new Headers(),
+      }
+
+      const key = defaultKeyGenerator(testReq)
+      expect(key).toBe('1.2.3.4')
+    })
+
+    it('should prefer req.remoteAddress over req.socket.remoteAddress', () => {
+      const testReq = {
+        remoteAddress: '5.6.7.8',
+        socket: {remoteAddress: '10.0.0.1'},
+        headers: new Headers(),
+      }
+
+      const key = defaultKeyGenerator(testReq)
+      expect(key).toBe('5.6.7.8')
+    })
+
+    it('should not trust proxy headers by default', () => {
       const testReq = {
         headers: new Headers([['x-forwarded-for', '9.10.11.12, 13.14.15.16']]),
       }
 
       const key = defaultKeyGenerator(testReq)
-      expect(key).toBe('9.10.11.12')
+      expect(key.startsWith('unknown:')).toBe(true)
     })
 
-    it('should return unknown when no IP headers available', () => {
+    it('should return unique key when no IP headers available', () => {
       const testReq = {
         headers: new Headers(),
       }
 
-      const key = defaultKeyGenerator(testReq)
-      expect(key).toBe('unknown')
+      const key1 = defaultKeyGenerator(testReq)
+      const key2 = defaultKeyGenerator(testReq)
+      expect(key1.startsWith('unknown:')).toBe(true)
+      expect(key2.startsWith('unknown:')).toBe(true)
+      expect(key1).not.toBe(key2) // Each call should produce a unique key
     })
   })
 
@@ -630,6 +668,61 @@ describe('Rate Limit Middleware', () => {
       const response = await middleware(req, next)
       expect(response.status).toBe(429)
       expect(await response.text()).toBe('Custom string response')
+    })
+  })
+
+  describe('Minimal Standard Headers Mode (L-6)', () => {
+    it('should only add Retry-After on 429 with minimal mode', async () => {
+      const middleware = rateLimit({
+        windowMs: 60000,
+        max: 1,
+        standardHeaders: 'minimal',
+      })
+
+      // First request should pass without rate limit headers
+      const response1 = await middleware(req, next)
+      expect(response1.headers.get('X-RateLimit-Limit')).toBeNull()
+      expect(response1.headers.get('X-RateLimit-Remaining')).toBeNull()
+      expect(response1.headers.get('X-RateLimit-Reset')).toBeNull()
+      expect(response1.headers.get('X-RateLimit-Used')).toBeNull()
+      expect(response1.headers.get('Retry-After')).toBeNull()
+
+      jest.clearAllMocks()
+
+      // Second request should be rate limited with only Retry-After
+      const response2 = await middleware(req, next)
+      expect(response2.status).toBe(429)
+      expect(response2.headers.get('Retry-After')).toBeTruthy()
+      expect(response2.headers.get('X-RateLimit-Limit')).toBeNull()
+      expect(response2.headers.get('X-RateLimit-Remaining')).toBeNull()
+      expect(response2.headers.get('X-RateLimit-Used')).toBeNull()
+    })
+
+    it('should add full headers when standardHeaders is true', async () => {
+      const middleware = rateLimit({
+        windowMs: 60000,
+        max: 5,
+        standardHeaders: true,
+      })
+
+      const response = await middleware(req, next)
+      expect(response.headers.get('X-RateLimit-Limit')).toBe('5')
+      expect(response.headers.get('X-RateLimit-Remaining')).toBe('4')
+      expect(response.headers.get('X-RateLimit-Used')).toBe('1')
+      expect(response.headers.get('X-RateLimit-Reset')).toBeTruthy()
+    })
+
+    it('should add no headers when standardHeaders is false', async () => {
+      const middleware = rateLimit({
+        windowMs: 60000,
+        max: 5,
+        standardHeaders: false,
+      })
+
+      const response = await middleware(req, next)
+      expect(response.headers.get('X-RateLimit-Limit')).toBeNull()
+      expect(response.headers.get('X-RateLimit-Remaining')).toBeNull()
+      expect(response.headers.get('X-RateLimit-Used')).toBeNull()
     })
   })
 })

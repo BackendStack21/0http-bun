@@ -266,9 +266,10 @@ describe('Middleware Next Function Unit Tests', () => {
 
       const nextFn = createNextFunction(middlewares, final, errorHandler)
 
-      // Async errors in middleware are not currently caught by the next function
-      // This is a limitation of the current implementation
-      await expect(nextFn({})).rejects.toThrow('Async middleware error')
+      // Async errors are now caught by the next function
+      const result = await nextFn({})
+      expect(result.errorHandled).toBe(true)
+      expect(result.errorMessage).toBe('Async middleware error')
     })
 
     it('should handle errors passed to next function', async () => {

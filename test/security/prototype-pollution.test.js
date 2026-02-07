@@ -207,4 +207,77 @@ describe('Prototype Pollution Security Tests', () => {
       expect({}.polluted).toBeUndefined()
     })
   })
+
+  describe('Query Prototype Pollution Protection (L-1)', () => {
+    it('should filter __proto__ from query parameters', async () => {
+      routerInstance.get('/search', (req) => {
+        return Response.json({query: req.query})
+      })
+
+      const testReq = {
+        method: 'GET',
+        url: 'http://localhost/search?__proto__[polluted]=true&safe=value',
+        headers: {},
+      }
+
+      await routerInstance.fetch(testReq)
+
+      // __proto__ key should be filtered from query
+      expect(testReq.query['__proto__']).toBeUndefined()
+      expect(testReq.query.safe).toBe('value')
+      expect({}.polluted).toBeUndefined()
+    })
+
+    it('should filter constructor from query parameters', async () => {
+      routerInstance.get('/search', (req) => {
+        return Response.json({query: req.query})
+      })
+
+      const testReq = {
+        method: 'GET',
+        url: 'http://localhost/search?constructor=malicious&name=test',
+        headers: {},
+      }
+
+      await routerInstance.fetch(testReq)
+
+      expect(testReq.query['constructor']).toBeUndefined()
+      expect(testReq.query.name).toBe('test')
+    })
+
+    it('should filter prototype from query parameters', async () => {
+      routerInstance.get('/search', (req) => {
+        return Response.json({query: req.query})
+      })
+
+      const testReq = {
+        method: 'GET',
+        url: 'http://localhost/search?prototype=bad&ok=yes',
+        headers: {},
+      }
+
+      await routerInstance.fetch(testReq)
+
+      expect(testReq.query['prototype']).toBeUndefined()
+      expect(testReq.query.ok).toBe('yes')
+    })
+
+    it('should still allow normal query parameters', async () => {
+      routerInstance.get('/search', (req) => {
+        return Response.json({query: req.query})
+      })
+
+      const testReq = {
+        method: 'GET',
+        url: 'http://localhost/search?page=1&limit=10&filter=active',
+        headers: {},
+      }
+
+      await routerInstance.fetch(testReq)
+
+      expect(testReq.query.page).toBe('1')
+      expect(testReq.query.limit).toBe('10')
+      expect(testReq.query.filter).toBe('active')
+    })
+  })
 })

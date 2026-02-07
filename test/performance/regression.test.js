@@ -214,12 +214,18 @@ describe('Performance Regression Tests', () => {
         throw new Error('Test error')
       })
 
+      // Suppress console.error during perf test (default error handler logs errors)
+      const originalError = console.error
+      console.error = () => {}
+
       const iterations = 500
       const {time} = await measureTime(async () => {
         for (let i = 0; i < iterations; i++) {
           await router.fetch(createTestRequest('GET', '/error-test'))
         }
       })
+
+      console.error = originalError
 
       const avgTime = time / iterations
       expect(avgTime).toBeLessThan(3) // Error handling should not be too slow

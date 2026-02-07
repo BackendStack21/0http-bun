@@ -122,6 +122,20 @@ const testRequestTypes = async (req: ZeroRequest): Promise<Response> => {
   const params: Record<string, string> = req.params
   const query: Record<string, string> = req.query
 
+  // Test connection-level IP properties
+  const ip: string | undefined = req.ip
+  const remoteAddress: string | undefined = req.remoteAddress
+  const socketAddress: string | undefined = req.socket?.remoteAddress
+
+  // Test top-level rate limit info (set by rate-limit middleware)
+  const topLevelRateLimit = req.rateLimit
+  if (topLevelRateLimit) {
+    const limit: number = topLevelRateLimit.limit
+    const remaining: number = topLevelRateLimit.remaining
+    const current: number = topLevelRateLimit.current
+    const reset: Date = topLevelRateLimit.reset
+  }
+
   // Test context object
   const ctx = req.ctx
   const log = ctx?.log

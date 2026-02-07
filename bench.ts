@@ -1,16 +1,19 @@
 import {run, bench, group} from 'mitata'
-import httpNext from './index'
+import httpNext, {IRouter} from './index'
 import httpPrevious from '0http-bun'
 
-function setupRouter(router) {
-  router.use((req, next) => {
+const silentErrorHandler = () =>
+  new Response('Internal Server Error', {status: 500})
+
+function setupRouter(router: any) {
+  router.use((req: any, next: () => any) => {
     return next()
   })
 
   router.get('/', () => {
     return new Response()
   })
-  router.get('/:id', async (req) => {
+  router.get('/:id', async (req: {params: Record<string, string>}) => {
     return new Response(req.params.id)
   })
   router.get('/:id/error', () => {
@@ -18,35 +21,30 @@ function setupRouter(router) {
   })
 }
 
-const {router} = httpNext()
+function benchRouter(name: string, router: any) {
+  group(name, () => {
+    bench('Parameter URL', async () => {
+      await router.fetch(new Request(new URL('http://localhost/0')))
+    }).gc('inner')
+    bench('Not Found URL', async () => {
+      await router.fetch(new Request(new URL('http://localhost/0/404')))
+    }).gc('inner')
+    bench('Error URL', async () => {
+      await router.fetch(new Request(new URL('http://localhost/0/error')))
+    }).gc('inner')
+  })
+}
+
+const {router} = httpNext({errorHandler: silentErrorHandler})
 setupRouter(router)
 
-const {router: routerPrevious} = httpPrevious()
+const {router: routerPrevious} = httpPrevious({
+  errorHandler: silentErrorHandler,
+})
 setupRouter(routerPrevious)
 
-group('Next Router', () => {
-  bench('Parameter URL', () => {
-    router.fetch(new Request(new URL('http://localhost/0')))
-  }).gc('inner')
-  bench('Not Found URL', () => {
-    router.fetch(new Request(new URL('http://localhost/0/404')))
-  }).gc('inner')
-  bench('Error URL', () => {
-    router.fetch(new Request(new URL('http://localhost/0/error')))
-  }).gc('inner')
-})
-
-group('Previous Router', () => {
-  bench('Parameter URL', () => {
-    routerPrevious.fetch(new Request(new URL('http://localhost/0')))
-  }).gc('inner')
-  bench('Not Found URL', () => {
-    routerPrevious.fetch(new Request(new URL('http://localhost/0/404')))
-  }).gc('inner')
-  bench('Error URL', () => {
-    routerPrevious.fetch(new Request(new URL('http://localhost/0/error')))
-  }).gc('inner')
-})
+benchRouter('Next Router', router)
+benchRouter('Previous Router', routerPrevious)
 
 run({
   colors: true,

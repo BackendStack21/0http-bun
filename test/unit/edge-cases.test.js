@@ -286,8 +286,13 @@ describe('Router Edge Cases and Boundary Conditions', () => {
       // This should not break the router
       router.get('/test', null, (req) => ({message: 'success'}))
 
+      const originalError = console.error
+      console.error = () => {}
+
       const req = createTestRequest('GET', '/test')
       const result = await router.fetch(req)
+
+      console.error = originalError
 
       // Should handle gracefully
       expect(typeof result).toBe('object')

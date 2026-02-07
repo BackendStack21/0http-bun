@@ -164,9 +164,12 @@ describe('Router Integration Tests', () => {
 
   describe('Error Handling', () => {
     it('should return a 500 response for a route that throws an error', async () => {
+      const originalError = console.error
+      console.error = () => {}
       const response = await router.fetch(createTestRequest('GET', '/error'))
+      console.error = originalError
       expect(response.status).toBe(500)
-      expect(await response.text()).toEqual('Unexpected error')
+      expect(await response.text()).toEqual('Internal Server Error')
     })
 
     it('should return a 404 response for a non-existent route', async () => {
@@ -346,12 +349,12 @@ describe('Router Integration Tests', () => {
       const testCases = [
         {
           url: '/search/hello%20world?filter=test%20value',
-          expectedTerm: 'hello%20world',
+          expectedTerm: 'hello world',
           expectedQuery: {filter: 'test value'}, // Query parser decodes spaces
         },
         {
           url: '/search/café?type=beverage',
-          expectedTerm: 'caf%C3%A9', // URL parameters are URL-encoded
+          expectedTerm: 'café',
           expectedQuery: {type: 'beverage'},
         },
         {
@@ -426,8 +429,13 @@ describe('Router Integration Tests', () => {
         return {success: true}
       })
 
+      const originalError = console.error
+      console.error = () => {}
+
       const req = createTestRequest('GET', '/api/error/test')
       const result = await router.fetch(req)
+
+      console.error = originalError
 
       // Should get error response with error handling
       expect(result.status).toBe(500)

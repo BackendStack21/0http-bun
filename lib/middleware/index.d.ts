@@ -65,6 +65,8 @@ export interface JWTAuthOptions {
   audience?: string | string[]
   issuer?: string
   algorithms?: string[]
+  // Token type validation
+  requiredTokenType?: string
   // Custom response and error handling
   unauthorizedResponse?:
     | Response
@@ -95,29 +97,14 @@ export interface TokenExtractionOptions {
 export function createJWTAuth(options?: JWTAuthOptions): RequestHandler
 export function createAPIKeyAuth(options: APIKeyAuthOptions): RequestHandler
 export function extractTokenFromHeader(req: ZeroRequest): string | null
-export function extractToken(
-  req: ZeroRequest,
-  options?: TokenExtractionOptions,
-): string | null
-export function validateApiKeyInternal(
-  apiKey: string,
-  apiKeys: JWTAuthOptions['apiKeys'],
-  apiKeyValidator: JWTAuthOptions['apiKeyValidator'],
-  req: ZeroRequest,
-): Promise<boolean | any>
-export function handleAuthError(
-  error: Error,
-  handlers: {
-    unauthorizedResponse?: JWTAuthOptions['unauthorizedResponse']
-    onError?: JWTAuthOptions['onError']
-  },
-  req: ZeroRequest,
-): Response
+export const API_KEY_SYMBOL: symbol
+export function maskApiKey(key: string): string
 
 // Rate limiting middleware types
 export interface RateLimitOptions {
   windowMs?: number
   max?: number
+  message?: string
   keyGenerator?: (req: ZeroRequest) => Promise<string> | string
   handler?: (
     req: ZeroRequest,
@@ -126,7 +113,7 @@ export interface RateLimitOptions {
     resetTime: Date,
   ) => Promise<Response> | Response
   store?: RateLimitStore
-  standardHeaders?: boolean
+  standardHeaders?: boolean | 'minimal'
   excludePaths?: string[]
   skip?: (req: ZeroRequest) => boolean
 }
@@ -169,7 +156,7 @@ export interface CORSOptions {
     | boolean
     | ((origin: string, req: ZeroRequest) => boolean | string)
   methods?: string[]
-  allowedHeaders?: string[]
+  allowedHeaders?: string[] | ((req: ZeroRequest) => string[])
   exposedHeaders?: string[]
   credentials?: boolean
   maxAge?: number
@@ -187,25 +174,30 @@ export function getAllowedOrigin(
 
 // Body parser middleware types
 export interface JSONParserOptions {
-  limit?: number
+  limit?: number | string
   reviver?: (key: string, value: any) => any
   strict?: boolean
   type?: string
+  deferNext?: boolean
 }
 
 export interface TextParserOptions {
-  limit?: number
+  limit?: number | string
   type?: string
   defaultCharset?: string
+  deferNext?: boolean
 }
 
 export interface URLEncodedParserOptions {
-  limit?: number
+  limit?: number | string
   extended?: boolean
+  parseNestedObjects?: boolean
+  deferNext?: boolean
 }
 
 export interface MultipartParserOptions {
-  limit?: number
+  limit?: number | string
+  deferNext?: boolean
 }
 
 export interface BodyParserOptions {
@@ -213,6 +205,15 @@ export interface BodyParserOptions {
   text?: TextParserOptions
   urlencoded?: URLEncodedParserOptions
   multipart?: MultipartParserOptions
+  jsonTypes?: string[]
+  jsonParser?: (text: string) => any
+  onError?: (error: Error, req: ZeroRequest, next: () => any) => any
+  verify?: (req: ZeroRequest, rawBody: string) => void
+  parseNestedObjects?: boolean
+  jsonLimit?: number | string
+  textLimit?: number | string
+  urlencodedLimit?: number | string
+  multipartLimit?: number | string
 }
 
 export interface ParsedFile {
@@ -233,6 +234,8 @@ export function createMultipartParser(
 export function createBodyParser(options?: BodyParserOptions): RequestHandler
 export function hasBody(req: ZeroRequest): boolean
 export function shouldParse(req: ZeroRequest, type: string): boolean
+export function parseLimit(limit: number | string): number
+export const RAW_BODY_SYMBOL: symbol
 
 // Prometheus metrics middleware types
 export interface PrometheusMetrics {

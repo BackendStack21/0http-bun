@@ -166,11 +166,49 @@ router.use(createBodyParser(bodyParserOptions))
 
 **Supported Content Types:**
 
-- `application/json` - Parsed as JSON
+- `application/json` - Parsed as JSON (strict matching; `application/xml` and other `application/*` types are no longer routed to the JSON parser)
 - `application/x-www-form-urlencoded` - Parsed as form data
 - `multipart/form-data` - Parsed as FormData
 - `text/*` - Parsed as plain text
 - `application/octet-stream` - Parsed as ArrayBuffer
+
+**Security Features:**
+
+- **JSON nesting depth limit** (max 100) with string-aware scanning — brace characters inside JSON strings do not count toward the depth limit
+- **Prototype pollution protection** — multipart body and files objects use `Object.create(null)`, and dangerous property names (`__proto__`, `constructor`, `prototype`, etc.) are blocked
+- **Multipart filename sanitization** — strips `..`, path separators (`/`, `\`), null bytes, and leading dots. The original filename is preserved in `file.originalName`
+- **Size limit validation** — `parseLimit()` throws `TypeError` for unexpected types (e.g., `null`, `false`, objects) instead of silently defaulting to 1MB
+- **Custom `jsonParser` safety** — when a custom `jsonParser` function is provided, size limits are enforced before the parser is called
+- **Empty body handling** — empty or whitespace-only JSON bodies set `req.body` to `undefined` instead of silently returning `{}`
+- **Raw body via Symbol** — raw body text is stored via a Symbol (`RAW_BODY_SYMBOL`) instead of a public string property, preventing accidental serialization/logging
+
+**Accessing Raw Body:**
+
+```javascript
+import {RAW_BODY_SYMBOL} from '0http-bun/lib/middleware/body-parser'
+
+router.post('/webhook', (req) => {
+  const rawBody = req[RAW_BODY_SYMBOL] // Symbol.for('0http.rawBody')
+  // Use rawBody for signature verification, etc.
+})
+```
+
+**Verify Function:**
+
+When using the `verify` option with `createBodyParser`, the raw body is available via the same symbol:
+
+```javascript
+const bodyParser = createBodyParser({
+  verify: (req, rawBody) => {
+    // rawBody is the raw string before parsing
+    const signature = req.headers.get('x-signature')
+    if (!verifySignature(rawBody, signature)) {
+      throw new Error('Invalid signature')
+    }
+  },
+  // Note: any JSON parsing behavior (such as deferNext) is handled internally when verify is set.
+})
+```
 
 ### CORS
 
@@ -199,10 +237,13 @@ router.use(
 )
 
 // Dynamic origin validation
+// NOTE: null and missing origins are automatically rejected before calling the
+// validator function, preventing bypass via sandboxed iframes.
 router.use(
   createCORS({
     origin: (origin, req) => {
       // Custom logic to validate origin
+      // `origin` is guaranteed to be a non-null, non-'null' string here
       return (
         origin?.endsWith('.mycompany.com') || origin === 'http://localhost:3000'
       )
@@ -210,6 +251,13 @@ router.use(
   }),
 )
 ```
+
+**Security behavior:**
+
+- When an origin is **not allowed**, CORS headers (methods, allowed headers, credentials, exposed headers) are **not set** on the response. Only `Vary: Origin` is added.
+- `null` origins (from sandboxed iframes, `file://` URLs, etc.) are **rejected** for array and function origin configurations.
+- `Vary: Origin` is set for all non-wildcard origin configurations to prevent CDN cache poisoning.
+- Wildcard (`*`) origins with `credentials: true` are blocked (CORS spec requirement).
 
 **TypeScript Usage:**
 
@@ -329,7 +377,9 @@ router.use(
     jwksUri: process.env.JWKS_URI,
 
     // JWT verification options
-    algorithms: ['HS256', 'RS256'],
+    // IMPORTANT: Do NOT mix symmetric (HS*) and asymmetric (RS*/ES*/PS*) algorithms.
+    // Use HS256 with static secrets, or RS256/ES256 with JWKS URIs.
+    algorithms: ['HS256'],
     issuer: 'your-app',
     audience: 'your-users',
     clockTolerance: 10, // Clock skew tolerance (seconds)
@@ -341,14 +391,13 @@ router.use(
       // Try multiple sources
       return (
         req.headers.get('x-auth-token') ||
-        req.headers.get('authorization')?.replace('Bearer ', '') ||
-        new URL(req.url).searchParams.get('token')
+        req.headers.get('authorization')?.replace('Bearer ', '')
       )
     },
 
     // Alternative token sources
     tokenHeader: 'x-custom-token', // Custom header name
-    tokenQuery: 'access_token', // Query parameter name
+    tokenQuery: 'access_token', // Query parameter name (see security note below)
 
     // Error handling
     onError: (err, req) => {
@@ -377,13 +426,21 @@ router.use(
     },
 
     // Optional authentication (proceed even without token)
+    // When optional: true, invalid tokens set req.ctx.authError and req.ctx.authAttempted = true
     optional: false,
 
-    // Exclude certain paths
+    // Exclude certain paths (uses exact match or path boundary, NOT prefix matching)
+    // e.g., '/health' excludes '/health' and '/health/...' but NOT '/healthcheck'
     excludePaths: ['/health', '/metrics', '/api/public'],
+
+    // Token type validation (validates the JWT 'typ' header claim)
+    // Case-insensitive comparison. Rejects tokens with missing or incorrect type.
+    requiredTokenType: 'JWT', // or 'at+jwt' for access tokens, etc.
   }),
 )
 ```
+
+> **Security Note on `tokenQuery`:** Passing JWTs via query parameters exposes tokens in server logs, browser history, and HTTP `Referer` headers. Prefer header-based token extraction in production.
 
 #### API Key Authentication
 
@@ -398,6 +455,14 @@ router.use(
     apiKeyHeader: 'x-api-key', // Default header
   }),
 )
+
+// Access the raw API key (req.apiKey is masked for security)
+import {API_KEY_SYMBOL} from '0http-bun/lib/middleware/jwt-auth'
+
+router.get('/api/data', (req) => {
+  console.log(req.apiKey) // 'xxxx****xxxx' (masked, safe for logging)
+  console.log(req[API_KEY_SYMBOL]) // Raw API key via Symbol.for('0http.apiKey')
+})
 
 // API key with custom validation
 router.use(
@@ -457,15 +522,22 @@ router.use('/api/protected/*', createJWTAuth(jwtConfig))
 ```typescript
 // Access decoded token in route handlers
 router.get('/api/profile', (req) => {
-  // Multiple ways to access user data
+  // Decoded JWT payload
   console.log(req.user) // Decoded JWT payload
   console.log(req.ctx.user) // Same as req.user
-  console.log(req.jwt) // Full JWT info (payload, header, token)
+
+  // JWT header and payload (raw token is NOT included for security)
+  console.log(req.jwt) // { payload, header }
   console.log(req.ctx.jwt) // Same as req.jwt
 
   // API key authentication data (if used)
-  console.log(req.apiKey) // API key value
-  console.log(req.ctx.apiKey) // Same as req.apiKey
+  console.log(req.apiKey) // Masked API key (xxxx****xxxx)
+  console.log(req.ctx.apiKey) // Same as req.apiKey (masked)
+
+  // Optional mode: check if auth was attempted but failed
+  if (req.ctx.authAttempted && req.ctx.authError) {
+    console.log('Auth failed:', req.ctx.authError)
+  }
 
   return Response.json({
     user: req.user,
@@ -618,9 +690,7 @@ const prometheus = createPrometheusIntegration({
 #### Custom Business Metrics
 
 ```javascript
-const {
-  createPrometheusIntegration,
-} = require('0http-bun/lib/middleware')
+const {createPrometheusIntegration} = require('0http-bun/lib/middleware')
 
 // Get the prometheus client from the integration
 const prometheus = createPrometheusIntegration()
@@ -783,8 +853,16 @@ router.use(
     windowMs: 60 * 1000, // 1 minute
     max: 20, // Max requests
     keyGenerator: (req) => {
-      // Custom key generation (default: IP address)
-      return req.headers.get('x-user-id') || req.headers.get('x-forwarded-for')
+      // Custom key generation
+      // Default uses: req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown'
+      // NOTE: Proxy headers are NOT trusted by default. If behind a
+      // reverse proxy, you MUST provide a custom keyGenerator:
+      return (
+        req.headers.get('x-user-id') ||
+        req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        req.ip ||
+        'unknown'
+      )
     },
     skip: (req) => {
       // Skip rate limiting for certain requests
@@ -802,6 +880,12 @@ router.use(
       )
     },
     standardHeaders: true, // Send X-RateLimit-* headers
+    // standardHeaders options:
+    //   true     - full headers (X-RateLimit-Limit, Remaining, Reset, Used) — default
+    //   false    - no rate limit headers
+    //   'minimal' - only Retry-After on 429 responses (hides exact config/counters)
+    // excludePaths uses exact match or boundary matching (NOT prefix)
+    // e.g., '/health' matches '/health' and '/health/...' but NOT '/healthcheck'
     excludePaths: ['/health', '/metrics'],
   }),
 )
@@ -811,6 +895,8 @@ router.use(
   createRateLimit({
     store: new MemoryStore(), // Built-in memory store
     // Or implement custom store with increment() method
+    // Note: The store is always the constructor-configured instance.
+    // It cannot be overridden at runtime via the request object.
   }),
 )
 ```
@@ -825,10 +911,12 @@ const rateLimitOptions: RateLimitOptions = {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   keyGenerator: (req) => {
+    // Default: req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown'
+    // Custom: read from proxy-set header if behind a reverse proxy
     return (
-      req.headers.get('x-user-id') ||
-      req.headers.get('x-forwarded-for') ||
-      'anonymous'
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.ip ||
+      'unknown'
     )
   },
   standardHeaders: true,
@@ -839,6 +927,8 @@ router.use(createRateLimit(rateLimitOptions))
 
 // Custom store implementation
 class CustomStore implements RateLimitStore {
+  // Note: For MemoryStore, increment is synchronous to prevent TOCTOU races.
+  // Custom stores may be async if using external backends (e.g., Redis).
   async increment(
     key: string,
     windowMs: number,
@@ -861,10 +951,14 @@ router.use(
   createSlidingWindowRateLimit({
     windowMs: 60 * 1000, // 1 minute sliding window
     max: 10, // Max 10 requests per minute
-    keyGenerator: (req) => req.headers.get('x-forwarded-for') || 'default',
+    maxKeys: 10000, // Maximum tracked keys (default: 10000) — prevents unbounded memory growth
+    keyGenerator: (req) =>
+      req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown',
   }),
 )
 ```
+
+> **Memory safety:** The sliding window rate limiter enforces a `maxKeys` limit (default: 10,000). When the limit is exceeded, the oldest entry is evicted. A periodic cleanup interval runs at most every 60 seconds (or `windowMs`, whichever is shorter) and uses `unref()` so it doesn't prevent process exit.
 
 **TypeScript Usage:**
 
@@ -875,7 +969,8 @@ import type {RateLimitOptions} from '0http-bun/lib/middleware'
 const slidingOptions: RateLimitOptions = {
   windowMs: 60 * 1000, // 1 minute
   max: 10, // 10 requests max
-  keyGenerator: (req) => req.user?.id || req.headers.get('x-forwarded-for'),
+  maxKeys: 10000, // Max tracked keys (default: 10000)
+  keyGenerator: (req) => req.user?.id || req.ip || 'unknown',
   handler: (req, hits, max, resetTime) => {
     return Response.json(
       {
@@ -920,7 +1015,8 @@ router.use(
   createSlidingWindowRateLimit({
     windowMs: 3600 * 1000, // 1 hour
     max: 3, // 3 accounts per IP per hour
-    keyGenerator: (req) => req.headers.get('x-forwarded-for'),
+    keyGenerator: (req) =>
+      req.ip || req.remoteAddress || req.socket?.remoteAddress || 'unknown',
   }),
 )
 
@@ -937,8 +1033,9 @@ router.use(
 
 **Performance Considerations:**
 
-- **Memory Usage**: Higher than fixed window (stores timestamp arrays)
+- **Memory Usage**: Higher than fixed window (stores timestamp arrays), bounded by `maxKeys` (default: 10,000)
 - **Time Complexity**: O(n) per request where n = requests in window
+- **Cleanup**: Automatic periodic cleanup runs at most every 60 seconds; interval uses `unref()` to not prevent process exit
 - **Best For**: Critical APIs, financial transactions, user-facing features
 - **Use Fixed Window For**: High-volume APIs where approximate limiting is acceptable
 
@@ -965,6 +1062,8 @@ Both rate limiters send the following headers when `standardHeaders: true`:
 - `X-RateLimit-Remaining` - Remaining requests
 - `X-RateLimit-Reset` - Reset time (Unix timestamp)
 - `X-RateLimit-Used` - Used requests
+
+When `standardHeaders: 'minimal'`, only `Retry-After` is sent on 429 responses. This prevents disclosing exact rate limit configuration and usage counters to clients.
 
 **Error Handling:**
 
@@ -1102,10 +1201,12 @@ router.use(
 router.use(createLogger({format: 'combined'}))
 
 // 3. Rate limiting (protect against abuse)
+// NOTE: Default key generator uses req.ip — provide keyGenerator if behind a proxy
 router.use(
   createRateLimit({
     windowMs: 15 * 60 * 1000,
     max: 1000,
+    // keyGenerator: (req) => req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.ip || 'unknown',
   }),
 )
 
@@ -1113,11 +1214,11 @@ router.use(
 router.use(createBodyParser({limit: '10mb'}))
 
 // 5. Authentication (protect API routes)
+// Default algorithms: ['HS256'] — specify ['RS256'] for asymmetric keys
 router.use(
   '/api/*',
   createJWTAuth({
     secret: process.env.JWT_SECRET,
-    skip: (req) => req.url.includes('/api/public/'),
   }),
 )
 
