@@ -5,7 +5,7 @@ import httpPrevious from '0http-bun'
 const silentErrorHandler = () =>
   new Response('Internal Server Error', {status: 500})
 
-function setupRouter(router: IRouter) {
+function setupRouter(router: any) {
   router.use((req: any, next: () => any) => {
     return next()
   })
@@ -21,6 +21,20 @@ function setupRouter(router: IRouter) {
   })
 }
 
+function benchRouter(name: string, router: any) {
+  group(name, () => {
+    bench('Parameter URL', async () => {
+      await router.fetch(new Request(new URL('http://localhost/0')))
+    }).gc('inner')
+    bench('Not Found URL', async () => {
+      await router.fetch(new Request(new URL('http://localhost/0/404')))
+    }).gc('inner')
+    bench('Error URL', async () => {
+      await router.fetch(new Request(new URL('http://localhost/0/error')))
+    }).gc('inner')
+  })
+}
+
 const {router} = httpNext({errorHandler: silentErrorHandler})
 setupRouter(router)
 
@@ -29,29 +43,8 @@ const {router: routerPrevious} = httpPrevious({
 })
 setupRouter(routerPrevious)
 
-group('Next Router', () => {
-  bench('Parameter URL', async () => {
-    await router.fetch(new Request(new URL('http://localhost/0')))
-  }).gc('inner')
-  bench('Not Found URL', async () => {
-    await router.fetch(new Request(new URL('http://localhost/0/404')))
-  }).gc('inner')
-  bench('Error URL', async () => {
-    await router.fetch(new Request(new URL('http://localhost/0/error')))
-  }).gc('inner')
-})
-
-group('Previous Router', () => {
-  bench('Parameter URL', async () => {
-    await routerPrevious.fetch(new Request(new URL('http://localhost/0')))
-  }).gc('inner')
-  bench('Not Found URL', async () => {
-    await routerPrevious.fetch(new Request(new URL('http://localhost/0/404')))
-  }).gc('inner')
-  bench('Error URL', async () => {
-    await routerPrevious.fetch(new Request(new URL('http://localhost/0/error')))
-  }).gc('inner')
-})
+benchRouter('Next Router', router)
+benchRouter('Previous Router', routerPrevious)
 
 run({
   colors: true,
