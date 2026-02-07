@@ -992,6 +992,132 @@ describe('Body Parser Middleware', () => {
       expect(req.body.name).toEqual(['John', 'Jane', 'Bob'])
     })
 
+    it('should use simple mode when extended is false (last value wins)', async () => {
+      const formData = 'name=John&name=Jane&name=Bob'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({urlencoded: {extended: false}})
+      await middleware(req, next)
+
+      // In simple mode, last value wins (no array merging)
+      expect(req.body.name).toBe('Bob')
+    })
+
+    it('should not parse bracket notation when extended is false', async () => {
+      const formData = 'user[name]=John&user[age]=30'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({urlencoded: {extended: false}})
+      await middleware(req, next)
+
+      // In simple mode, brackets are treated as literal key characters
+      expect(req.body['user[name]']).toBe('John')
+      expect(req.body['user[age]']).toBe('30')
+      expect(req.body.user).toBeUndefined()
+    })
+
+    it('should merge duplicate keys into arrays when extended is true but parseNestedObjects is false', async () => {
+      const formData = 'color=red&color=blue&color=green'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({
+        urlencoded: {extended: true, parseNestedObjects: false},
+      })
+      await middleware(req, next)
+
+      expect(Array.isArray(req.body.color)).toBe(true)
+      expect(req.body.color).toEqual(['red', 'blue', 'green'])
+    })
+
+    it('should parse nested objects when extended is true and parseNestedObjects is true', async () => {
+      const formData = 'user[name]=John&user[age]=30'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({
+        urlencoded: {extended: true, parseNestedObjects: true},
+      })
+      await middleware(req, next)
+
+      expect(req.body.user).toEqual({name: 'John', age: '30'})
+    })
+
+    it('should protect against prototype pollution when extended is false', async () => {
+      const formData = '__proto__=polluted&constructor=polluted&name=safe'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({urlencoded: {extended: false}})
+      await middleware(req, next)
+
+      expect({}.toString).toBeTypeOf('function')
+      expect(req.body.name).toBe('safe')
+      expect(req.body.__proto__).toBeUndefined()
+      expect(req.body.constructor).toBeUndefined()
+    })
+
+    it('should protect against prototype pollution when extended=true, parseNestedObjects=false', async () => {
+      const formData = '__proto__=a&__proto__=b&constructor=c&name=safe'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({
+        urlencoded: {extended: true, parseNestedObjects: false},
+      })
+      await middleware(req, next)
+
+      expect(req.body.name).toBe('safe')
+      expect(req.body.__proto__).toBeUndefined()
+      expect(req.body.constructor).toBeUndefined()
+    })
+
+    it('should treat brackets as literal keys when extended=true but parseNestedObjects=false', async () => {
+      const formData = 'user[name]=John&user[name]=Jane'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      const middleware = bodyParser({
+        urlencoded: {extended: true, parseNestedObjects: false},
+      })
+      await middleware(req, next)
+
+      // Brackets treated as literal key characters, duplicate keys merged into array
+      expect(req.body['user[name]']).toEqual(['John', 'Jane'])
+      expect(req.body.user).toBeUndefined()
+    })
+
+    it('should forward top-level extended option to urlencoded parser', async () => {
+      const formData = 'name=John&name=Jane'
+      req = createTestRequest('POST', '/api/form', {
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: formData,
+      })
+
+      // Top-level extended=false should be forwarded to urlencoded parser
+      const middleware = bodyParser({extended: false})
+      await middleware(req, next)
+
+      // Simple mode: last value wins
+      expect(req.body.name).toBe('Jane')
+    })
+
     it('should handle multipart files with no type', async () => {
       const boundary = 'boundary123'
       const multipartBody = [
