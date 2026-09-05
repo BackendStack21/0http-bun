@@ -6,6 +6,7 @@ const {
   normalizePathname,
   parseRequestUrl,
   getRequestPath,
+  setCanonicalPath,
   isExcludedPath,
   sanitizeQuery,
 } = require('../../lib/path')
@@ -74,10 +75,17 @@ describe('Path helpers', () => {
       })
     })
 
-    it('prefers req.path when already set by the router', () => {
-      expect(getRequestPath({path: '/canonical', url: 'http://x/other'})).toBe(
-        '/canonical',
-      )
+    it('does not trust a mutated req.path for security checks', () => {
+      expect(
+        getRequestPath({path: '/health', url: 'http://localhost/admin'}),
+      ).toBe('/admin')
+    })
+
+    it('prefers the write-once canonical path set by the router', () => {
+      const req = {url: 'http://localhost/other'}
+      setCanonicalPath(req, '/canonical')
+      req.path = '/health'
+      expect(getRequestPath(req)).toBe('/canonical')
     })
 
     it('falls back to parsing req.url', () => {

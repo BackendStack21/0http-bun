@@ -727,15 +727,21 @@ describe('Rate Limit Middleware', () => {
   })
 
   describe('MemoryStore bounds', () => {
-    it('evicts oldest keys when maxKeys is exceeded', async () => {
+    it('fails closed for new keys when maxKeys is exceeded', async () => {
       const {MemoryStore} = require('../../lib/middleware/rate-limit')
       const store = new MemoryStore({maxKeys: 2, cleanupEvery: 1000})
 
-      await store.increment('a', 60_000)
-      await store.increment('b', 60_000)
-      await store.increment('c', 60_000)
+      const a = await store.increment('a', 60_000)
+      const b = await store.increment('b', 60_000)
+      const c = await store.increment('c', 60_000)
 
-      expect(store.store.size).toBeLessThanOrEqual(2)
+      expect(store.store.size).toBe(2)
+      expect(a.totalHits).toBe(1)
+      expect(b.totalHits).toBe(1)
+      expect(c.totalHits).toBeGreaterThan(1000)
+
+      const a2 = await store.increment('a', 60_000)
+      expect(a2.totalHits).toBe(2)
     })
   })
 })

@@ -93,6 +93,19 @@ describe('Path canonicalization security', () => {
       const blocked = await middleware(toAdmin, next)
       expect(blocked.status).toBe(401)
     })
+
+    it('does not skip auth when req.path is forged to an excluded path', async () => {
+      const middleware = createJWTAuth({
+        secret: 'test-secret-key-that-is-long-enough',
+        excludePaths: ['/health'],
+      })
+      const next = () => new Response('ok')
+      const req = createTestRequest('GET', '/admin')
+      req.path = '/health'
+
+      const blocked = await middleware(req, next)
+      expect(blocked.status).toBe(401)
+    })
   })
 
   describe('Rate limit excludePaths', () => {

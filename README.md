@@ -621,7 +621,8 @@ Adversarial review of the v1.3.0 hardening pass. Remaining gaps in path handling
 - **Logger request IDs** — header-supplied IDs are stripped of control characters and capped at 128 chars.
 - **Logger response headers** — `Set-Cookie`, `Authorization`, `Cookie`, and `Proxy-Authorization` are redacted in the default serializer.
 - **JWT optional mode** — `req.ctx.authError` is a generic message, not the raw jose error.
-- **MemoryStore bounds** — `maxKeys` (default 10,000) plus amortized cleanup, matching the sliding-window limiter.
+- **MemoryStore bounds** — `maxKeys` (default 10,000) plus amortized cleanup. When full, **new keys fail closed** (429) instead of evicting live counters.
+- **Write-once canonical path** — security middleware reads `Symbol.for('0http.canonicalPath')` or re-parses `req.url`; mutable `req.path` is ignored.
 
 #### Performance
 

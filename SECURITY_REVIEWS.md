@@ -13,6 +13,8 @@
 > **Review 1 (v1.3.0):** 6/6 Critical, 13/13 High, 13/13 Medium, 7/7 Low, 4/4 Info = **43/43 vulnerabilities resolved** ✅
 >
 > **Review 2 (v1.3.1):** 1/1 High, 5/5 Medium, 3/3 Low = **9/9 follow-up findings resolved** ✅
+>
+> **Review 2 adversarial pass:** FIFO `maxKeys` eviction and trusted `req.path` were rejected and replaced with fail-closed admission and a write-once canonical-path symbol.
 
 ---
 
@@ -73,6 +75,20 @@ The v1.3.0 pass fixed the issues it named, but several fixes were incomplete or 
 - **Status:** FIXED
 - **File:** `lib/middleware/cors.js`
 - **Fix applied:** Validators are called as `origin(requestOrigin, req)`.
+
+### ✅ R2-H2 (adversarial): FIFO `maxKeys` eviction reset victim counters
+
+- **Status:** FIXED
+- **File:** `lib/middleware/rate-limit.js`
+- **Issue:** First-pass `maxKeys` deleted the oldest Map entry, which an attacker could use to rotate keys and reset a victim's window.
+- **Fix applied:** When the store is full, *new* keys fail closed (`totalHits` treated as over limit). Existing keys still increment. Same policy on the sliding-window limiter.
+
+### ✅ R2-M6 (adversarial): `getRequestPath()` trusted mutable `req.path`
+
+- **Status:** FIXED
+- **File:** `lib/path.js`
+- **Issue:** Security middleware preferred `req.path`, so application code (or a confused middleware) could set `req.path = '/health'` and skip JWT / rate-limit exclusions.
+- **Fix applied:** Router stores the canonical path on a write-once `Symbol.for('0http.canonicalPath')`. `getRequestPath()` uses that symbol or re-parses `req.url` — never `req.path`.
 
 ### ✅ R2-L3: CORS preflight method check was case-sensitive
 
