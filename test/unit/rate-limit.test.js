@@ -610,6 +610,26 @@ describe('Rate Limit Middleware', () => {
       )
     })
 
+    it('fails closed for new sliding-window keys when maxKeys is exceeded', async () => {
+      const {createSlidingWindowRateLimit} = require('../../lib/middleware/rate-limit')
+      let n = 0
+      const middleware = createSlidingWindowRateLimit({
+        windowMs: 60_000,
+        max: 5,
+        maxKeys: 2,
+        keyGenerator: () => `client-${n++}`,
+      })
+      const next = () => new Response('ok')
+
+      const a = await middleware(createTestRequest('GET', '/a'), next)
+      const b = await middleware(createTestRequest('GET', '/b'), next)
+      const c = await middleware(createTestRequest('GET', '/c'), next)
+
+      expect(a.status).toBe(200)
+      expect(b.status).toBe(200)
+      expect(c.status).toBe(429)
+    })
+
     it('should use custom handler in sliding window', async () => {
       const customHandler = jest
         .fn()
