@@ -156,7 +156,6 @@ const testRequestTypes = async (req: ZeroRequest): Promise<Response> => {
   if (jwt) {
     const payload = jwt.payload
     const header = jwt.header
-    const token = jwt.token
   }
 
   // Test rate limit structure
@@ -176,14 +175,14 @@ const testRequestTypes = async (req: ZeroRequest): Promise<Response> => {
           const name: string = file.name
           const size: number = file.size
           const type: string = file.type
-          const data: File = file.data
+          const data: Uint8Array = file.data
         })
       } else {
         const file: ParsedFile = value
         const name: string = file.name
         const size: number = file.size
         const type: string = file.type
-        const data: File = file.data
+        const data: Uint8Array = file.data
       }
     }
   }

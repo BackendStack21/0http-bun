@@ -4,22 +4,30 @@ import {Logger} from 'pino'
 export interface IRouterConfig {
   cacheSize?: number
   defaultRoute?: RequestHandler
-  errorHandler?: (err: Error) => Response | Promise<Response>
+  errorHandler?: (err: Error, req?: ZeroRequest) => Response | Promise<Response>
   port?: number
 }
 
 export type StepFunction = (error?: unknown) => Response | Promise<Response>
 
 export interface ParsedFile {
+  filename?: string
+  originalName?: string
   name: string
   size: number
   type: string
-  data: File
+  mimetype?: string
+  data: Uint8Array
 }
 
 export type ZeroRequest = Request & {
+  // Canonical pathname set by the router (slash-collapsed, decoded, dot-resolved)
+  path?: string
   params: Record<string, string>
   query: Record<string, string>
+  // Parsed body / files (set by body-parser middleware)
+  body?: any
+  files?: Record<string, ParsedFile | ParsedFile[]>
   // Connection-level IP address (set via Bun.serve's server.requestIP or upstream middleware)
   ip?: string
   remoteAddress?: string
@@ -38,19 +46,22 @@ export type ZeroRequest = Request & {
   jwt?: {
     payload: any
     header: any
-    token: string
   }
   apiKey?: string
+  log?: Logger
+  requestId?: string
   // Context object for middleware data
   ctx?: {
     log?: Logger
+    requestId?: string
     user?: any
     jwt?: {
       payload: any
       header: any
-      token: string
     }
     apiKey?: string
+    authError?: string
+    authAttempted?: boolean
     rateLimit?: {
       limit: number
       used: number

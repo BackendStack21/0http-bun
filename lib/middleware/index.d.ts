@@ -6,6 +6,10 @@ export interface LoggerOptions {
   serializers?: Record<string, (obj: any) => any>
   logBody?: boolean
   excludePaths?: string[]
+  logger?: any
+  level?: string
+  requestIdHeader?: string
+  generateRequestId?: () => string
 }
 
 export function createLogger(options?: LoggerOptions): RequestHandler
@@ -104,6 +108,7 @@ export function maskApiKey(key: string): string
 export interface RateLimitOptions {
   windowMs?: number
   max?: number
+  maxKeys?: number
   message?: string
   keyGenerator?: (req: ZeroRequest) => Promise<string> | string
   handler?: (
@@ -127,7 +132,7 @@ export interface RateLimitStore {
 }
 
 export class MemoryStore implements RateLimitStore {
-  constructor()
+  constructor(options?: {maxKeys?: number; cleanupEvery?: number})
   increment(
     key: string,
     windowMs: number,
@@ -210,6 +215,7 @@ export interface BodyParserOptions {
   onError?: (error: Error, req: ZeroRequest, next: () => any) => any
   verify?: (req: ZeroRequest, rawBody: string) => void
   parseNestedObjects?: boolean
+  extended?: boolean
   jsonLimit?: number | string
   textLimit?: number | string
   urlencodedLimit?: number | string
@@ -217,10 +223,13 @@ export interface BodyParserOptions {
 }
 
 export interface ParsedFile {
+  filename?: string
+  originalName?: string
   name: string
   size: number
   type: string
-  data: File
+  mimetype?: string
+  data: Uint8Array
 }
 
 export function createJSONParser(options?: JSONParserOptions): RequestHandler

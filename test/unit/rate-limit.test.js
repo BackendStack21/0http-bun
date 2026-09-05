@@ -725,4 +725,17 @@ describe('Rate Limit Middleware', () => {
       expect(response.headers.get('X-RateLimit-Used')).toBeNull()
     })
   })
+
+  describe('MemoryStore bounds', () => {
+    it('evicts oldest keys when maxKeys is exceeded', async () => {
+      const {MemoryStore} = require('../../lib/middleware/rate-limit')
+      const store = new MemoryStore({maxKeys: 2, cleanupEvery: 1000})
+
+      await store.increment('a', 60_000)
+      await store.increment('b', 60_000)
+      await store.increment('c', 60_000)
+
+      expect(store.store.size).toBeLessThanOrEqual(2)
+    })
+  })
 })

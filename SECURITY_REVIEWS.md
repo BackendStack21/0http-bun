@@ -3,10 +3,82 @@
 > Penetration test conducted on 2025-02-07 against `0http-bun@1.2.2`.
 > **43 vulnerabilities found** — 6 Critical, 13 High, 13 Medium, 7 Low, 4 Info.
 > **Overall Security Grade: D → B+ — All identified vulnerabilities resolved.**
+>
+> Follow-up adversarial review (2026-09-05) against `0http-bun@1.3.0` found additional
+> gaps that the first pass claimed to have closed. Those are tracked and fixed below
+> as **R2-*** (review 2).
 
 ## Remediation Progress
 
-> **Fixed:** 6/6 Critical, 13/13 High, 13/13 Medium, 7/7 Low, 4/4 Info = **43/43 vulnerabilities resolved** ✅
+> **Review 1 (v1.3.0):** 6/6 Critical, 13/13 High, 13/13 Medium, 7/7 Low, 4/4 Info = **43/43 vulnerabilities resolved** ✅
+>
+> **Review 2 (v1.3.1):** 1/1 High, 5/5 Medium, 3/3 Low = **9/9 follow-up findings resolved** ✅
+
+---
+
+## REVIEW 2 — Adversarial follow-up (v1.3.0 → v1.3.1)
+
+The v1.3.0 pass fixed the issues it named, but several fixes were incomplete or inconsistent across modules. These were found by re-reading the claimed remediations against the actual code.
+
+### ✅ R2-H1: Path normalization did not resolve `.` / `..` (auth / route filter bypass)
+
+- **Status:** FIXED
+- **Files:** `lib/path.js`, `lib/router/sequential.js`, JWT / rate-limit / logger / prometheus
+- **Issue:** M-2 claimed to prevent bypass via `%2e%2e`, but after `decodeURIComponent` the path still contained literal `..`. Middleware `excludePaths` used `new URL(req.url).pathname` (which *does* resolve dots) while the router did not. A request to `/admin/../health` could skip JWT (`pathname === '/health'`) while routing on `/admin/../health`.
+- **Fix applied:** Shared `normalizePathname()` collapses slashes, decodes (preserving `%2F`), then resolves `.` / `..`. All middleware reads `req.path` when present.
+
+### ✅ R2-M1: Logger and Prometheus `excludePaths` still used prefix matching
+
+- **Status:** FIXED
+- **Files:** `lib/middleware/logger.js`, `lib/middleware/prometheus.js`
+- **Issue:** H-7 / M-11 were fixed for JWT and rate-limit. Logger and Prometheus still used `pathname.startsWith(path)`, so `/health` skipped `/healthcheck`.
+- **Fix applied:** Shared `isExcludedPath()` — exact or `path + '/'` boundary.
+
+### ✅ R2-M2: CORS preflight omitted `Vary: Origin` for static string origins
+
+- **Status:** FIXED
+- **File:** `lib/middleware/cors.js`
+- **Issue:** L-7 said Vary is set for all non-wildcard origins. Actual requests did; preflight only set Vary for function/array origins. CDNs could cache a preflight for the wrong origin.
+- **Fix applied:** `applyVaryOrigin()` on every non-wildcard preflight and response.
+
+### ✅ R2-M3: `origin: 'null'` string config allowed sandboxed iframes
+
+- **Status:** FIXED
+- **File:** `lib/middleware/cors.js`
+- **Issue:** Null-origin rejection ran only for array/function configs. A string origin of `'null'` would reflect `Origin: null`.
+- **Fix applied:** Missing/`null` origins rejected for every non-wildcard configuration.
+
+### ✅ R2-M4: MemoryStore had no `maxKeys` and scanned all keys on every request
+
+- **Status:** FIXED
+- **File:** `lib/middleware/rate-limit.js`
+- **Issue:** H-10 bounded the sliding-window limiter. The default fixed-window `MemoryStore` still grew without limit (worse after I-1 unique unknown keys) and ran O(n) cleanup on every increment.
+- **Fix applied:** `maxKeys` (default 10,000) and amortized cleanup every 100 increments.
+
+### ✅ R2-M5: Client-supplied request IDs and default response logs leaked secrets
+
+- **Status:** FIXED
+- **File:** `lib/middleware/logger.js`
+- **Issue:** `requestIdHeader` values were copied verbatim (CRLF injection / log forging). Default response logging dumped all headers, including `Set-Cookie`.
+- **Fix applied:** Sanitize request IDs (strip controls, max 128 chars). Redact `Set-Cookie`, `Authorization`, `Cookie`, `Proxy-Authorization`.
+
+### ✅ R2-L1: Optional JWT mode stored raw `error.message` on `req.ctx`
+
+- **Status:** FIXED
+- **File:** `lib/middleware/jwt-auth.js`
+- **Fix applied:** `req.ctx.authError` is now `'Invalid or expired token'`.
+
+### ✅ R2-L2: CORS origin validator ignored the documented `req` argument
+
+- **Status:** FIXED
+- **File:** `lib/middleware/cors.js`
+- **Fix applied:** Validators are called as `origin(requestOrigin, req)`.
+
+### ✅ R2-L3: CORS preflight method check was case-sensitive
+
+- **Status:** FIXED
+- **File:** `lib/middleware/cors.js`
+- **Fix applied:** Methods compared case-insensitively.
 
 ---
 

@@ -733,4 +733,40 @@ describe('Logger Middleware', () => {
       )
     })
   })
+
+  describe('Hardening: request ID and header redaction', () => {
+    it('strips control characters from header-supplied request IDs', async () => {
+      req.headers = {
+        get: () => 'ok-id\nInjected-Header: evil',
+      }
+
+      const middleware = logger({
+        logger: mockLog,
+        requestIdHeader: 'x-request-id',
+      })
+
+      await middleware(req, next)
+
+      expect(req.requestId).toBe('ok-idInjected-Header: evil')
+      expect(req.requestId).not.toMatch(/[\n\r]/)
+    })
+
+    it('redacts Set-Cookie on default response logs', async () => {
+      next = jest.fn(
+        () =>
+          new Response('OK', {
+            headers: {'Set-Cookie': 'session=secret', 'X-Trace': '1'},
+          }),
+      )
+
+      const middleware = logger({logger: mockLog})
+      await middleware(req, next)
+
+      const completionLog = mockLog.info.mock.calls.find(
+        (call) => call[0].msg === 'Request completed',
+      )
+      expect(completionLog[0].headers['set-cookie']).toBe('[Redacted]')
+      expect(completionLog[0].headers['x-trace']).toBe('1')
+    })
+  })
 })

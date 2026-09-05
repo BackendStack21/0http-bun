@@ -575,6 +575,7 @@ router.use(
       },
     },
     logBody: false,
+    // exact or boundary match — '/health' does not skip '/healthcheck'
     excludePaths: ['/health', '/metrics'],
   }),
 )
@@ -660,7 +661,7 @@ const prometheus = createPrometheusIntegration({
   // Control default Node.js metrics collection
   collectDefaultMetrics: true,
 
-  // Exclude paths from metrics collection (optimized for performance)
+  // Exclude paths from metrics collection (exact or boundary match)
   excludePaths: ['/health', '/ping', '/favicon.ico'],
 
   // Skip certain HTTP methods

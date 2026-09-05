@@ -363,7 +363,7 @@ router.get('/api/risky', async (req: ZeroRequest) => {
 - **Algorithm Confusion Prevention**: JWT middleware rejects mixed symmetric/asymmetric algorithm configurations
 - **Cache Exhaustion Prevention**: LRU-style route cache with configurable `cacheSize` limit (default: 1000)
 - **Memory Exhaustion Prevention**: Strict size limits, sliding window rate limiter with `maxKeys` eviction, and automatic cleanup intervals
-- **Route Filter Bypass Prevention**: URL path normalization (double-slash collapse, URI decoding, `%2F` preservation)
+- **Route Filter Bypass Prevention**: URL path normalization (double-slash collapse, URI decoding, `%2F` preservation, `.` / `..` resolution)
 - **Frozen Route Params**: Parameterless routes receive an immutable `Object.freeze({})` to prevent cross-request data leakage
 
 #### **Error Handling**
@@ -499,7 +499,7 @@ router.use(
 - **Fast parameter parsing**: Optimized URL parameter extraction with caching
 - **Query string parsing**: Uses `fast-querystring` for optimal performance
 - **Memory efficient**: LRU-style route caching with configurable `cacheSize` limit, immutable shared objects, and minimal allocations
-- **URL normalization**: Single-pass URL parsing with path normalization (double-slash collapse, URI decoding)
+- **URL normalization**: Single-pass URL parsing with path normalization (double-slash collapse, URI decoding, `.` / `..` resolution)
 
 ### Benchmark Results
 
@@ -606,6 +606,38 @@ _Benchmarks run on Bun v1.2.2 with simple JSON response routes. Results may vary
 - **🎯 Production Proven**: Used in production by companies worldwide
 
 ## Changelog
+
+### v1.3.1 — Follow-up Hardening
+
+Adversarial review of the v1.3.0 hardening pass. Remaining gaps in path handling, middleware consistency, and hot-path cost are addressed.
+
+#### Security
+
+- **Dot-segment resolution** — `%2e%2e` / `..` / `.` are now resolved after URI decoding so routing and `excludePaths` cannot disagree (the previous pass collapsed slashes and decoded, but left `..` in the path).
+- **Shared canonical path** — JWT, rate-limit, logger, and Prometheus `excludePaths` now use the same `req.path` the router computed, instead of `new URL(req.url).pathname`.
+- **Logger / Prometheus prefix matching** — `excludePaths` now uses exact-or-boundary matching (same as JWT and rate-limit). `/health` no longer skips `/healthcheck`.
+- **CORS preflight `Vary: Origin`** — set for static string origins as well as function/array origins.
+- **CORS `null` origin** — rejected for all non-wildcard configs, including `origin: 'null'`.
+- **Logger request IDs** — header-supplied IDs are stripped of control characters and capped at 128 chars.
+- **Logger response headers** — `Set-Cookie`, `Authorization`, `Cookie`, and `Proxy-Authorization` are redacted in the default serializer.
+- **JWT optional mode** — `req.ctx.authError` is a generic message, not the raw jose error.
+- **MemoryStore bounds** — `maxKeys` (default 10,000) plus amortized cleanup, matching the sliding-window limiter.
+
+#### Performance
+
+- Router skips decode / slash-collapse / dot-resolution when the path does not need them.
+- Reused frozen empty query object; single-pass param copy.
+- Middleware no longer allocates `new URL()` on every request when `req.path` is set.
+- JSON nesting scan short-circuits at the depth limit; body reader uses tracked byte length.
+- Custom `jsonTypes` parsers are cached instead of being created per request.
+
+#### Ergonomics
+
+- Types now include `req.path`, `req.body`, `req.files`, logger options (`level`, `requestIdHeader`, `generateRequestId`), `errorHandler(err, req)`, `extended` on body parser, and `maxKeys` on rate limit.
+- `ParsedFile.data` is `Uint8Array` (matches the implementation). `req.jwt.token` removed from types (removed in 1.3.0).
+- CORS origin validators receive `(origin, req)` as documented.
+- CORS preflight methods are compared case-insensitively.
+- CI runs `bun run lint` (check) instead of `format` (write). Bench script points at `bench.ts`.
 
 ### v1.3.0 — Security Hardening Release
 

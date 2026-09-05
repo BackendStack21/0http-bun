@@ -89,6 +89,7 @@ describe('CORS Middleware', () => {
 
       expect(originValidator).toHaveBeenCalledWith(
         'https://dynamic.example.com',
+        req,
       )
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
         'https://dynamic.example.com',
@@ -108,7 +109,7 @@ describe('CORS Middleware', () => {
 
       const response = await middleware(req, next)
 
-      expect(originValidator).toHaveBeenCalledWith('https://invalid.com')
+      expect(originValidator).toHaveBeenCalledWith('https://invalid.com', req)
       expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
     })
   })
@@ -523,6 +524,7 @@ describe('CORS Middleware', () => {
 
       expect(originValidator).toHaveBeenCalledWith(
         'https://dynamic.example.com',
+        req,
       )
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
         'https://allowed.example.com',
@@ -783,6 +785,52 @@ describe('CORS Middleware', () => {
       expect(response.headers.get('Access-Control-Allow-Headers')).toBe(
         'Content-Type',
       )
+    })
+  })
+
+  describe('Hardening: Vary, method case, null origin', () => {
+    it('sets Vary: Origin on preflight for static string origins', async () => {
+      req = createTestRequest('OPTIONS', '/api/test')
+      req.headers = new Headers({
+        Origin: 'https://example.com',
+        'Access-Control-Request-Method': 'POST',
+      })
+
+      const middleware = cors({
+        origin: 'https://example.com',
+        methods: ['GET', 'POST'],
+      })
+
+      const response = await middleware(req, next)
+      expect(response.status).toBe(204)
+      expect(response.headers.get('Vary')).toBe('Origin')
+    })
+
+    it('accepts preflight methods case-insensitively', async () => {
+      req = createTestRequest('OPTIONS', '/api/test')
+      req.headers = new Headers({
+        Origin: 'https://example.com',
+        'Access-Control-Request-Method': 'post',
+      })
+
+      const middleware = cors({
+        origin: 'https://example.com',
+        methods: ['GET', 'POST'],
+      })
+
+      const response = await middleware(req, next)
+      expect(response.status).toBe(204)
+    })
+
+    it('rejects the literal null origin for string origin configs', async () => {
+      req.headers = new Headers({Origin: 'null'})
+
+      const middleware = cors({
+        origin: 'null',
+      })
+
+      const response = await middleware(req, next)
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
     })
   })
 })
